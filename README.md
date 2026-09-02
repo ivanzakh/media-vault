@@ -40,3 +40,17 @@ npm run dev
 ```sh
 npm run build
 ```
+
+## Деплой
+
+При пуше в `main` GitHub Actions ([.github/workflows/deploy.yml](.github/workflows/deploy.yml))
+собирает проект и пушит `dist/` в `projects/media-vault` репозитория
+[ivanzakh.github.io](https://github.com/ivanzakh/ivanzakh.github.io) (классические GitHub Pages,
+раздаётся напрямую из ветки `master` этого репозитория).
+
+**Никогда не ставить `force_orphan: true`** на шаге `peaceiris/actions-gh-pages`. Если клонирование
+целевого репозитория провалится (истёкший `PAGES_DEPLOY_TOKEN`, опечатка в `publish_branch`,
+сетевой сбой), экшен не падает — он молча создаёт orphan-ветку. Без `force_orphan` такой пуш
+просто отклоняется как non-fast-forward (красный CI, ничего не потеряно). С `force_orphan: true`
+он форсированно запушится и снесёт **весь** сайт ivanzakh.github.io, заменив его веткой с
+единственным содержимым — `projects/media-vault`.

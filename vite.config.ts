@@ -6,7 +6,13 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import vuetify from 'vite-plugin-vuetify'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // Прод собирается под подкаталог личного сайта — путь совпадает с
+  // destination_dir в .github/workflows/deploy.yml, менять их нужно вместе.
+  // Различаем по mode, а не по command: `vite preview` тоже резолвит конфиг
+  // с command === 'serve', и по command база в превью схлопнулась бы в '/'.
+  // У build и preview mode === 'production', у dev — 'development'.
+  base: mode === 'production' ? '/projects/media-vault/' : '/',
   plugins: [
     vue(),
     vueDevTools(),
@@ -19,4 +25,4 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-})
+}))

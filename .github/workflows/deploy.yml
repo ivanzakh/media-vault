@@ -1,0 +1,47 @@
+name: Deploy to ivanzakh.github.io
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['README.md', '.gitignore']
+  workflow_dispatch:
+
+# The deploy action does a plain (non-force) push and doesn't retry on
+# conflict. Without this, two quick pushes in a row would give a
+# non-fast-forward on the second one and a red build.
+concurrency:
+  group: deploy-site
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_TMDB_TOKEN: ${{ secrets.VITE_TMDB_TOKEN }}
+
+      # Classic GitHub Pages не умеет rewrite: без dist/404.html прямой заход
+      # или F5 на /movie/603 отдаст голый 404 вместо приложения.
+      - name: Verify SPA fallback was built
+        run: test -f dist/404.html
+
+      - name: Deploy to ivanzakh.github.io
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          external_repository: ivanzakh/ivanzakh.github.io
+          publish_branch: master # ivanzakh.github.io's branch, not media-vault's
+          publish_dir: ./dist
+          destination_dir: projects/media-vault
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          # NEVER set force_orphan: true here — see README.md "Деплой".
