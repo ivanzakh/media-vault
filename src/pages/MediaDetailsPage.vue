@@ -6,8 +6,15 @@ import { mdiAccountOutline, mdiStar } from '@mdi/js'
 import { isAbortError, TmdbError } from '@/api/client'
 import { getDetails, imageUrl } from '@/api/media'
 import type { MediaDetails, MediaType } from '@/api/types'
+import FavoriteButton from '@/components/FavoriteButton.vue'
 import MediaPoster from '@/components/MediaPoster.vue'
-import { formatNumber, formatRating, formatRuntime, plural } from '@/utils/format'
+import {
+  detailsToMediaItem,
+  formatNumber,
+  formatRating,
+  formatRuntime,
+  plural,
+} from '@/utils/format'
 import NotFoundPage from './NotFoundPage.vue'
 
 /** Больше шести лиц в ряд уже не читаются как «главные роли». */
@@ -124,6 +131,9 @@ watch(
 onMounted(() => window.addEventListener('resize', updateCastScroll))
 onBeforeUnmount(() => window.removeEventListener('resize', updateCastScroll))
 
+/** Снимок для избранного: в стор уезжает та же форма, что рисует сетка. */
+const favoriteItem = computed(() => (details.value ? detailsToMediaItem(details.value) : null))
+
 const votesText = computed(() => {
   const count = details.value?.voteCount ?? 0
   if (!count) return null
@@ -160,7 +170,7 @@ const votesText = computed(() => {
         />
         <v-skeleton-loader
           class="details-body details-skeleton details-skeleton--body"
-          type="text, heading, paragraph"
+          type="chip, text, heading, paragraph"
         />
       </div>
     </v-container>
@@ -226,6 +236,8 @@ const votesText = computed(() => {
           </div>
 
           <div class="details-body">
+            <FavoriteButton v-if="favoriteItem" :item="favoriteItem" with-label class="mb-6" />
+
             <p v-if="details.tagline" class="text-body-large font-italic text-medium-emphasis">
               {{ details.tagline }}
             </p>
@@ -386,6 +398,14 @@ const votesText = computed(() => {
 .details-skeleton--meta :deep(.v-skeleton-loader__chip + .v-skeleton-loader__chip) {
   margin-top: 24px;
   max-width: 240px;
+}
+
+/* Кость под кнопку избранного: её высота (40px) плюс mb-6 у самой кнопки. */
+.details-skeleton--body :deep(.v-skeleton-loader__chip) {
+  height: 40px;
+  max-width: 180px;
+  border-radius: 20px;
+  margin-bottom: 24px;
 }
 
 /* Слоган, подзаголовок «Описание» и сам текст. */

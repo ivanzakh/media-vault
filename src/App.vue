@@ -3,8 +3,11 @@ import { mdiHeartOutline, mdiMovieOpenOutline } from '@mdi/js'
 import { useDisplay } from 'vuetify'
 
 import SearchAutocomplete from '@/components/SearchAutocomplete.vue'
+import { useFavoritesStore } from '@/stores/favorites'
 
 const { smAndDown } = useDisplay()
+
+const favorites = useFavoritesStore()
 </script>
 
 <template>
@@ -18,22 +21,29 @@ const { smAndDown } = useDisplay()
 
         <SearchAutocomplete class="flex-grow-1" />
 
-        <v-btn
-          v-if="smAndDown"
-          :icon="mdiHeartOutline"
-          :to="{ name: 'favorites' }"
-          variant="text"
-          aria-label="Избранное"
-        />
-        <v-btn
-          v-else
-          :prepend-icon="mdiHeartOutline"
-          :to="{ name: 'favorites' }"
-          variant="text"
+        <!--
+          model-value гасит бейдж на нуле: пустой кружок рядом с сердечком
+          читался бы как «что-то есть, но не показано».
+        -->
+        <v-badge
+          :model-value="favorites.count > 0"
+          :content="favorites.count"
+          color="primary"
+          offset-x="6"
+          offset-y="6"
           class="flex-shrink-0"
         >
-          Избранное
-        </v-btn>
+          <v-btn
+            v-if="smAndDown"
+            :icon="mdiHeartOutline"
+            :to="{ name: 'favorites' }"
+            variant="text"
+            aria-label="Избранное"
+          />
+          <v-btn v-else :prepend-icon="mdiHeartOutline" :to="{ name: 'favorites' }" variant="text">
+            Избранное
+          </v-btn>
+        </v-badge>
       </v-container>
     </v-app-bar>
 

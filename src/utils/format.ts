@@ -89,6 +89,24 @@ export function toMediaItem(result: MovieResult | TvResult): MediaItem {
 }
 
 /**
+ * Деталка → карточка. Избранное хранит `MediaItem`, поэтому со страницы тайтла
+ * в стор уезжает не весь ответ, а тот же снимок, что лежит в сетке результатов:
+ * на странице избранного он рисуется тем же `MediaCard` и не требует запроса.
+ */
+export function detailsToMediaItem(details: MediaDetails): MediaItem {
+  return {
+    id: details.id,
+    mediaType: details.mediaType,
+    title: details.title,
+    originalTitle: details.originalTitle,
+    year: details.year,
+    posterPath: details.posterPath,
+    voteAverage: details.voteAverage,
+    overview: details.overview,
+  }
+}
+
+/**
  * Деталка фильма и сериала — к одной форме. Тип приходит не из ответа (его там
  * нет), а от вызывающей стороны, поэтому нормализаторов два, по одному на форму
  * ответа: так TypeScript проверяет поля, а не мы глазами.

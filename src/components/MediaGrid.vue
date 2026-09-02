@@ -13,6 +13,8 @@ withDefaults(
     skeletonCount?: number
     emptyTitle?: string
     emptyText?: string
+    /** Путь SVG из @mdi/js: у пустого поиска и пустого избранного смысл разный. */
+    emptyIcon?: string
   }>(),
   {
     loading: false,
@@ -20,6 +22,7 @@ withDefaults(
     skeletonCount: 20,
     emptyTitle: 'Ничего не найдено',
     emptyText: 'Попробуйте изменить запрос.',
+    emptyIcon: mdiMagnify,
   },
 )
 
@@ -46,7 +49,7 @@ const emit = defineEmits<{ retry: [] }>()
 
   <v-empty-state
     v-else-if="items.length === 0"
-    :icon="mdiMagnify"
+    :icon="emptyIcon"
     :title="emptyTitle"
     :text="emptyText"
   >
