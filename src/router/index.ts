@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import SearchPage from '@/pages/SearchPage.vue'
+import CatalogPage from '@/pages/CatalogPage.vue'
 
 const router = createRouter({
   // BASE_URL берётся из конфига Vite, чтобы сборка не была привязана к корню домена.
@@ -8,9 +8,10 @@ const router = createRouter({
 
   // Порядок важен: сначала конкретные пути, затем параметрический, последним catch-all.
   routes: [
-    // На этапе 7 корень отойдёт каталогу, поиск останется на /search.
-    { path: '/', name: 'home', component: SearchPage },
-    { path: '/search', name: 'search', component: SearchPage },
+    // Каталог — главная и единственная страница, которую грузим сразу:
+    // с неё начинается любой заход, остальные подтягиваются по требованию.
+    { path: '/', name: 'home', component: CatalogPage },
+    { path: '/search', name: 'search', component: () => import('@/pages/SearchPage.vue') },
     {
       path: '/favorites',
       name: 'favorites',

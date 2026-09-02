@@ -66,6 +66,22 @@ export function isMediaResult(result: MultiSearchResult): result is MovieResult 
 }
 
 /**
+ * `/discover/movie` и `/discover/tv` возвращают те же объекты, что и поиск, но
+ * без `media_type`: тип известен из самого запроса. Поэтому формы выводим из
+ * поисковых, а тип приписывает уже `discover()` — из своего же параметра.
+ */
+export type DiscoverMovieResult = Omit<MovieResult, 'media_type'>
+export type DiscoverTvResult = Omit<TvResult, 'media_type'>
+
+/**
+ * Ключи сортировки в терминах интерфейса. В параметры TMDB их переводит
+ * `SORT_PARAM` в `api/media.ts`: у фильмов и сериалов поля называются
+ * по-разному, и наружу эта асимметрия не выходит.
+ */
+export const SORT_KEYS = ['popularity', 'rating', 'votes', 'date'] as const
+export type SortKey = (typeof SORT_KEYS)[number]
+
+/**
  * Нормализованная форма, в которой фильм и сериал неразличимы. Дальше по
  * приложению ходит только она — она же ляжет в избранное на этапе 6.
  */
