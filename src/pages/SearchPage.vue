@@ -1,20 +1,15 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { searchMedia } from '@/api/media'
 import MediaGrid from '@/components/MediaGrid.vue'
 import { MAX_PAGES, PAGE_SIZE, usePagedList } from '@/composables/usePagedList'
 import { formatNumber, plural } from '@/utils/format'
+import { firstValue } from '@/utils/query'
 
 const route = useRoute()
 const router = useRouter()
-
-/** Один и тот же ключ в URL может прийти массивом: `?q=a&q=b`. Берём первый. */
-function firstValue(value: LocationQueryValue | LocationQueryValue[] | undefined): string {
-  const raw = Array.isArray(value) ? value[0] : value
-  return raw ?? ''
-}
 
 /**
  * Источник правды — URL. Это бесплатно даёт рабочие «назад/вперёд»,

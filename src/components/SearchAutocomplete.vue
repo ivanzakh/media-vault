@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import type { MediaItem } from '@/api/types'
 import { useDebouncedSearch } from '@/composables/useDebouncedSearch'
+import { mediaTypeLabel } from '@/utils/format'
 
 // Корень шаблона — фрагмент (поле + меню), поэтому class="flex-grow-1"
 // из App.vue не унаследовался бы автоматически. Прокидываем его на поле руками.
@@ -182,7 +183,7 @@ function onKeydown(event: KeyboardEvent) {
           <template #subtitle>{{ item.year ?? 'год неизвестен' }}</template>
           <template #append>
             <v-chip size="x-small" variant="tonal" class="ms-2">
-              {{ item.mediaType === 'movie' ? 'Фильм' : 'Сериал' }}
+              {{ mediaTypeLabel(item.mediaType) }}
             </v-chip>
           </template>
         </v-list-item>

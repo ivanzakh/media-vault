@@ -3,6 +3,7 @@ import type {
   CastMember,
   MediaDetails,
   MediaItem,
+  MediaType,
   MovieDetailsResponse,
   MovieResult,
   TvDetailsResponse,
@@ -10,6 +11,11 @@ import type {
 } from '@/api/types'
 
 const numberFormat = new Intl.NumberFormat('ru-RU')
+
+/** Подпись типа для карточек, чипов и заголовков — чтобы не расходилась по экранам. */
+export function mediaTypeLabel(mediaType: MediaType): string {
+  return mediaType === 'movie' ? 'Фильм' : 'Сериал'
+}
 
 /** Разряды через неразрывный пробел: 1 234 вместо 1234. */
 export function formatNumber(value: number): string {

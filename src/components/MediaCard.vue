@@ -1,15 +1,40 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { mdiStar } from '@mdi/js'
+import { mdiStar, mdiTagOutline } from '@mdi/js'
 
 import type { MediaItem } from '@/api/types'
-import { formatRating } from '@/utils/format'
+import { useTagSheet } from '@/composables/useTagSheet'
+import { useFavoritesStore } from '@/stores/favorites'
+import { formatRating, mediaTypeLabel } from '@/utils/format'
 import FavoriteButton from './FavoriteButton.vue'
 import MediaPoster from './MediaPoster.vue'
 
-const props = defineProps<{ item: MediaItem }>()
+const props = withDefaults(
+  defineProps<{
+    item: MediaItem
+    /**
+     * Метки и кнопка их правки. Только для избранного: в каталоге и поиске
+     * большинство карточек не сохранено, и пустое место под чипы там было бы
+     * пустым у всей сетки.
+     */
+    withTags?: boolean
+  }>(),
+  { withTags: false },
+)
+
+const favorites = useFavoritesStore()
+const tagSheet = useTagSheet()
 
 const rating = computed(() => formatRating(props.item.voteAverage))
+
+const tagNames = computed(() => {
+  if (!props.withTags) return []
+
+  const assigned = new Set(favorites.itemTagIds(props.item.mediaType, props.item.id))
+  // Идём по реестру, а не по `tagIds` записи: порядок меток задан в диалоге
+  // управления, и на карточках он должен быть тем же, что в шапке.
+  return favorites.tags.filter((tag) => assigned.has(tag.id)).map((tag) => tag.name)
+})
 </script>
 
 <template>
@@ -42,7 +67,7 @@ const rating = computed(() => formatRating(props.item.voteAverage))
 
         <div class="d-flex align-center ga-2">
           <v-chip size="x-small" variant="tonal">
-            {{ item.mediaType === 'movie' ? 'Фильм' : 'Сериал' }}
+            {{ mediaTypeLabel(item.mediaType) }}
           </v-chip>
           <span class="text-body-small text-medium-emphasis">{{ item.year ?? '—' }}</span>
 
@@ -56,7 +81,35 @@ const rating = computed(() => formatRating(props.item.voteAverage))
       </div>
     </v-card>
 
-    <FavoriteButton :item="item" class="media-card__favorite" />
+    <!--
+      Метки под карточкой, а не внутри ссылки: строка растёт по числу меток, а
+      у .media-card__body высота выверена под скелетоны сетки — лишний блок
+      внутри рассинхронизировал бы их.
+    -->
+    <div v-if="tagNames.length" class="media-card__tags d-flex flex-wrap ga-1 pt-2">
+      <v-chip v-for="name in tagNames" :key="name" size="x-small" variant="tonal" :title="name">
+        {{ name }}
+      </v-chip>
+    </div>
+
+    <div class="media-card__actions">
+      <!--
+        Отдельная кнопка, а не открытие листа по сердечку: сердечко на уже
+        сохранённом тайтле должно убирать его одним кликом, как везде в
+        приложении, и подменять это действие меню значило бы удивлять на каждом
+        экране ради редкого сценария.
+      -->
+      <v-btn
+        v-if="withTags"
+        :icon="mdiTagOutline"
+        :aria-label="`Метки: ${item.title}`"
+        variant="text"
+        size="small"
+        class="media-card__chip-btn"
+        @click="tagSheet.open(item)"
+      />
+      <FavoriteButton :item="item" />
+    </div>
   </div>
 </template>
 
@@ -66,10 +119,26 @@ const rating = computed(() => formatRating(props.item.voteAverage))
   position: relative;
 }
 
-.media-card__favorite {
+.media-card__actions {
   position: absolute;
   top: 4px;
   right: 4px;
+  display: flex;
+  gap: 2px;
+}
+
+/*
+  Та же подложка, что у сердечка: кнопка лежит поверх постера, а постер бывает
+  любой — от чёрного кадра до белого. Токен темы, а не константа rgba, чтобы
+  иконка читалась и в светлой палитре, и в тёмной.
+*/
+.media-card__chip-btn {
+  background: rgba(var(--v-theme-surface), 0.82);
+}
+
+/* Длинное имя метки не должно распирать колонку сетки. */
+.media-card__tags .v-chip {
+  max-width: 100%;
 }
 
 .media-card {

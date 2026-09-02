@@ -1,7 +1,8 @@
-import type { LocationQuery, LocationQueryRaw, LocationQueryValue } from 'vue-router'
+import type { LocationQuery, LocationQueryRaw } from 'vue-router'
 
 import { SORT_KEYS, type MediaType, type SortKey } from '@/api/types'
 import { MAX_PAGES } from '@/composables/usePagedList'
+import { firstValue } from '@/utils/query'
 
 /** Ниже 1900 в каталоге TMDB почти пусто, а ползунок становится длиннее без пользы. */
 export const MIN_YEAR = 1900
@@ -23,12 +24,6 @@ export interface CatalogFilters {
 
 export function isSortKey(value: unknown): value is SortKey {
   return typeof value === 'string' && (SORT_KEYS as readonly string[]).includes(value)
-}
-
-/** Один и тот же ключ в URL может прийти массивом: `?type=movie&type=tv`. Берём первый. */
-function firstValue(value: LocationQueryValue | LocationQueryValue[] | undefined): string {
-  const raw = Array.isArray(value) ? value[0] : value
-  return raw ?? ''
 }
 
 function parseGenreIds(raw: string): number[] {

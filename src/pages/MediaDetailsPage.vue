@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onScopeDispose, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { mdiAccountOutline, mdiStar } from '@mdi/js'
+import { mdiAccountOutline, mdiStar, mdiTagOutline } from '@mdi/js'
 
 import { isAbortError, TmdbError } from '@/api/client'
 import { getDetails, imageUrl } from '@/api/media'
 import type { MediaDetails, MediaType } from '@/api/types'
 import FavoriteButton from '@/components/FavoriteButton.vue'
 import MediaPoster from '@/components/MediaPoster.vue'
+import { useTagSheet } from '@/composables/useTagSheet'
+import { useFavoritesStore } from '@/stores/favorites'
 import {
   detailsToMediaItem,
   formatNumber,
   formatRating,
   formatRuntime,
+  mediaTypeLabel,
   plural,
 } from '@/utils/format'
 import NotFoundPage from './NotFoundPage.vue'
@@ -21,6 +24,9 @@ import NotFoundPage from './NotFoundPage.vue'
 const CAST_LIMIT = 6
 
 const route = useRoute()
+
+const favorites = useFavoritesStore()
+const tagSheet = useTagSheet()
 
 const details = ref<MediaDetails | null>(null)
 const loading = ref(false)
@@ -134,6 +140,23 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateCastScroll))
 /** Снимок для избранного: в стор уезжает та же форма, что рисует сетка. */
 const favoriteItem = computed(() => (details.value ? detailsToMediaItem(details.value) : null))
 
+const isSaved = computed(() =>
+  favoriteItem.value
+    ? favorites.isFavorite(favoriteItem.value.mediaType, favoriteItem.value.id)
+    : false,
+)
+
+const tagNames = computed(() => {
+  if (!favoriteItem.value) return []
+
+  // Идём по реестру, а не по `tagIds` записи: порядок задан в диалоге
+  // управления, и он должен быть одним на всех экранах.
+  const assigned = new Set(
+    favorites.itemTagIds(favoriteItem.value.mediaType, favoriteItem.value.id),
+  )
+  return favorites.tags.filter((tag) => assigned.has(tag.id)).map((tag) => tag.name)
+})
+
 const votesText = computed(() => {
   const count = details.value?.voteCount ?? 0
   if (!count) return null
@@ -212,7 +235,7 @@ const votesText = computed(() => {
           <div class="details-meta">
             <div class="d-flex flex-wrap align-center ga-3 text-body-medium">
               <v-chip size="small" variant="tonal">
-                {{ details.mediaType === 'movie' ? 'Фильм' : 'Сериал' }}
+                {{ mediaTypeLabel(details.mediaType) }}
               </v-chip>
               <span v-if="details.year">{{ details.year }}</span>
               <span v-if="lengthText">{{ lengthText }}</span>
@@ -236,7 +259,30 @@ const votesText = computed(() => {
           </div>
 
           <div class="details-body">
-            <FavoriteButton v-if="favoriteItem" :item="favoriteItem" with-label class="mb-6" />
+            <div v-if="favoriteItem" class="mb-6">
+              <div class="d-flex flex-wrap align-center ga-2">
+                <FavoriteButton :item="favoriteItem" with-label />
+
+                <!--
+                  Кнопка появляется только у сохранённого тайтла: вешать метки
+                  на то, чего нет в избранном, некуда.
+                -->
+                <v-btn
+                  v-if="isSaved"
+                  :prepend-icon="mdiTagOutline"
+                  variant="tonal"
+                  @click="tagSheet.open(favoriteItem)"
+                >
+                  Метки
+                </v-btn>
+              </div>
+
+              <div v-if="tagNames.length" class="d-flex flex-wrap ga-2 mt-3">
+                <v-chip v-for="name in tagNames" :key="name" size="small" variant="tonal">
+                  {{ name }}
+                </v-chip>
+              </div>
+            </div>
 
             <p v-if="details.tagline" class="text-body-large font-italic text-medium-emphasis">
               {{ details.tagline }}

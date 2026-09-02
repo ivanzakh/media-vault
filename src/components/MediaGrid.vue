@@ -15,6 +15,8 @@ withDefaults(
     emptyText?: string
     /** Путь SVG из @mdi/js: у пустого поиска и пустого избранного смысл разный. */
     emptyIcon?: string
+    /** Проброс в карточки: метки и кнопка их правки нужны только в избранном. */
+    withTags?: boolean
   }>(),
   {
     loading: false,
@@ -23,6 +25,7 @@ withDefaults(
     emptyTitle: 'Ничего не найдено',
     emptyText: 'Попробуйте изменить запрос.',
     emptyIcon: mdiMagnify,
+    withTags: false,
   },
 )
 
@@ -61,7 +64,12 @@ const emit = defineEmits<{ retry: [] }>()
   </v-empty-state>
 
   <div v-else class="media-grid">
-    <MediaCard v-for="item in items" :key="`${item.mediaType}:${item.id}`" :item="item" />
+    <MediaCard
+      v-for="item in items"
+      :key="`${item.mediaType}:${item.id}`"
+      :item="item"
+      :with-tags="withTags"
+    />
   </div>
 </template>
 

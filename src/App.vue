@@ -2,6 +2,7 @@
 import { mdiHeartOutline, mdiMovieOpenOutline } from '@mdi/js'
 import { useDisplay } from 'vuetify'
 
+import FavoriteTagsSheet from '@/components/FavoriteTagsSheet.vue'
 import SearchAutocomplete from '@/components/SearchAutocomplete.vue'
 import { useFavoritesStore } from '@/stores/favorites'
 
@@ -50,6 +51,12 @@ const favorites = useFavoritesStore()
     <v-main>
       <RouterView />
     </v-main>
+
+    <!--
+      Один экземпляр на всё приложение: сердечки со всех страниц открывают его
+      через `useTagSheet`, а не носят по листу каждое.
+    -->
+    <FavoriteTagsSheet />
 
     <!--
       Без `app` футер перестаёт быть элементом лейаута и становится обычным

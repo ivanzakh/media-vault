@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { mdiHeart, mdiHeartOutline } from '@mdi/js'
 
 import type { MediaItem } from '@/api/types'
+import { useTagSheet } from '@/composables/useTagSheet'
 import { useFavoritesStore } from '@/stores/favorites'
 
 const props = withDefaults(
@@ -15,9 +16,22 @@ const props = withDefaults(
 )
 
 const favorites = useFavoritesStore()
+const tagSheet = useTagSheet()
 
 const active = computed(() => favorites.isFavorite(props.item.mediaType, props.item.id))
 const label = computed(() => (active.value ? 'В избранном' : 'В избранное'))
+
+/**
+ * Добавление сразу открывает лист меток: разложить тайтл проще в тот момент,
+ * когда его сохраняют, а не потом, разбирая накопившуюся кучу. Лист можно
+ * закрыть не глядя — тайтл останется в избранном без меток.
+ *
+ * При удалении лист не открывается: там решение уже принято, и любое окно
+ * поверх было бы лишним шагом.
+ */
+function onClick(): void {
+  if (favorites.toggle(props.item)) tagSheet.open(props.item)
+}
 </script>
 
 <template>
@@ -31,7 +45,7 @@ const label = computed(() => (active.value ? 'В избранном' : 'В из�
     :color="active ? 'red' : undefined"
     :aria-pressed="active"
     variant="tonal"
-    @click="favorites.toggle(item)"
+    @click="onClick"
   >
     {{ label }}
   </v-btn>
@@ -50,7 +64,7 @@ const label = computed(() => (active.value ? 'В избранном' : 'В из�
     variant="text"
     size="small"
     class="favorite-chip"
-    @click="favorites.toggle(item)"
+    @click="onClick"
   />
 </template>
 
