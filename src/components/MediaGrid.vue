@@ -27,8 +27,7 @@ const emit = defineEmits<{ retry: [] }>()
 </script>
 
 <template>
-  <!-- `?? ''` только ради типов: v-if уже гарантирует непустую строку,
-       но narrowing не распространяется на соседние атрибуты того же элемента. -->
+  <!-- `?? ''` ради типов: prop ждёт строку, а error объявлен как string | null. -->
   <v-alert v-if="error" type="error" variant="tonal" :text="error ?? ''">
     <template #append>
       <v-btn variant="text" @click="emit('retry')">Повторить</v-btn>

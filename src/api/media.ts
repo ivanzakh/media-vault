@@ -1,8 +1,17 @@
-import { toMediaItem } from '@/utils/format'
+import { toMediaItem, toMovieDetails, toTvDetails } from '@/utils/format'
 
 import { tmdb } from './client'
 import { isMediaResult } from './types'
-import type { ImageSize, MediaItem, MultiSearchResult, Paginated } from './types'
+import type {
+  ImageSize,
+  MediaDetails,
+  MediaItem,
+  MediaType,
+  MovieDetailsResponse,
+  MultiSearchResult,
+  Paginated,
+  TvDetailsResponse,
+} from './types'
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p'
 
@@ -43,4 +52,28 @@ export async function searchMedia(
     ...data,
     results: data.results.filter(isMediaResult).map(toMediaItem),
   }
+}
+
+/**
+ * Деталка тайтла. `append_to_response` привозит актёрский состав тем же
+ * запросом — иначе на открытие карточки уходило бы два вызова.
+ *
+ * Ветвление по типу, а не общий дженерик: ответы `/movie` и `/tv` не содержат
+ * `media_type`, различить их постфактум нечем, а так каждый разбирает свой
+ * нормализатор и TypeScript проверяет поля.
+ */
+export async function getDetails(
+  type: MediaType,
+  id: number,
+  signal?: AbortSignal,
+): Promise<MediaDetails> {
+  if (type === 'movie') {
+    const params = { append_to_response: 'credits' }
+    return toMovieDetails(await tmdb<MovieDetailsResponse>(`/movie/${id}`, params, signal))
+  }
+
+  // У сериала `credits` — это состав последнего сезона, а не всего сериала.
+  // Полный состав живёт в `aggregate_credits`, у него и форма актёра другая.
+  const params = { append_to_response: 'aggregate_credits' }
+  return toTvDetails(await tmdb<TvDetailsResponse>(`/tv/${id}`, params, signal))
 }
