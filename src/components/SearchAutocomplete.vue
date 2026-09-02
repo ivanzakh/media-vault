@@ -161,7 +161,7 @@ function onKeydown(event: KeyboardEvent) {
     <v-sheet class="search-menu" rounded="lg" elevation="6">
       <div
         v-if="loading || error || results.length === 0"
-        class="px-4 py-3 text-body-2"
+        class="px-4 py-3 text-body-medium"
         :class="error ? 'text-error' : 'text-medium-emphasis'"
         aria-live="polite"
       >

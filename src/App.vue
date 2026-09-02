@@ -13,7 +13,7 @@ const { smAndDown } = useDisplay()
       <v-container class="d-flex align-center ga-3 py-0">
         <RouterLink to="/" class="app-logo">
           <v-icon :icon="mdiMovieOpenOutline" size="26" color="primary" />
-          <span v-if="!smAndDown" class="text-h6 font-weight-medium">Media Vault</span>
+          <span v-if="!smAndDown" class="text-title-large font-weight-medium">Media Vault</span>
         </RouterLink>
 
         <SearchAutocomplete class="flex-grow-1" />
@@ -41,9 +41,15 @@ const { smAndDown } = useDisplay()
       <RouterView />
     </v-main>
 
-    <!-- app: футер становится элементом лейаута, v-main сам получает отступ снизу. -->
-    <v-footer app color="surface" border class="justify-center">
-      <div class="text-center text-caption text-medium-emphasis py-2">
+    <!--
+      Без `app` футер перестаёт быть элементом лейаута и становится обычным
+      блоком в конце страницы: он не отнимает высоту на каждом экране, а уезжает
+      вместе с содержимым. На коротких страницах его всё равно прижмёт к низу
+      окна — v-main занимает весь остаток высоты. flex-grow-0 нужен, чтобы этот
+      остаток не делился между ними: у .v-footer в стилях flex: 1 1 auto.
+    -->
+    <v-footer color="surface" border class="justify-center flex-grow-0">
+      <div class="text-center text-body-small text-medium-emphasis py-2">
         <!-- Атрибуция обязательна по условиям использования TMDB API. -->
         <div>
           This product uses the TMDB API but is not endorsed or certified by

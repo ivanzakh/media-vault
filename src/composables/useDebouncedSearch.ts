@@ -1,9 +1,8 @@
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue'
 
 import { isAbortError } from '@/api/client'
-import { searchMulti } from '@/api/media'
-import { isMediaResult, type MediaItem } from '@/api/types'
-import { toMediaItem } from '@/utils/format'
+import { searchMedia } from '@/api/media'
+import type { MediaItem } from '@/api/types'
 
 const SUGGESTION_LIMIT = 8
 
@@ -48,13 +47,10 @@ export function useDebouncedSearch(delay = 300, minLength = 2) {
       controller = current
 
       try {
-        const data = await searchMulti(trimmed, 1, current.signal)
+        const data = await searchMedia(trimmed, 1, current.signal)
         // Защита от гонки: пока летел этот запрос, мог стартовать следующий.
         if (controller !== current) return
-        results.value = data.results
-          .filter(isMediaResult)
-          .map(toMediaItem)
-          .slice(0, SUGGESTION_LIMIT)
+        results.value = data.results.slice(0, SUGGESTION_LIMIT)
       } catch (e) {
         if (controller !== current || isAbortError(e)) return
         console.error(e)
