@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { mdiFolderOutline, mdiStar } from '@mdi/js'
+import { mdiStar } from '@mdi/js'
 
 import type { MediaItem } from '@/api/types'
-import { useCategorySheet } from '@/composables/useCategorySheet'
 import { formatRating, mediaTypeLabel } from '@/utils/format'
 import FavoriteButton from './FavoriteButton.vue'
 import MediaPoster from './MediaPoster.vue'
@@ -12,18 +11,15 @@ const props = withDefaults(
   defineProps<{
     item: MediaItem
     /**
-     * Кнопка смены категории. Только для избранного: в каталоге и поиске
-     * большинство карточек не сохранено, и перекладывать там нечего.
-     *
-     * Имя категории на карточке не показываем: сетка всегда принадлежит одной
-     * категории, и подпись была бы одинаковой у всех карточек сразу.
+     * На карточке избранного клик по сердечку не убирает тайтл сразу, а
+     * открывает лист управления категорией — там же есть и «Убрать из
+     * избранного». В каталоге и поиске большинство карточек не сохранено,
+     * и открывать лист управления там нечем.
      */
     withCategory?: boolean
   }>(),
   { withCategory: false },
 )
-
-const categorySheet = useCategorySheet()
 
 const rating = computed(() => formatRating(props.item.voteAverage))
 </script>
@@ -73,22 +69,7 @@ const rating = computed(() => formatRating(props.item.voteAverage))
     </v-card>
 
     <div class="media-card__actions">
-      <!--
-        Отдельная кнопка, а не открытие листа по сердечку: сердечко на уже
-        сохранённом тайтле должно убирать его одним кликом, как везде в
-        приложении, и подменять это действие меню значило бы удивлять на каждом
-        экране ради редкого сценария.
-      -->
-      <v-btn
-        v-if="withCategory"
-        :icon="mdiFolderOutline"
-        :aria-label="`Категория: ${item.title}`"
-        variant="text"
-        size="small"
-        class="media-card__chip-btn"
-        @click="categorySheet.open(item)"
-      />
-      <FavoriteButton :item="item" />
+      <FavoriteButton :item="item" :with-category="withCategory" />
     </div>
   </div>
 </template>
@@ -105,15 +86,6 @@ const rating = computed(() => formatRating(props.item.voteAverage))
   right: 4px;
   display: flex;
   gap: 2px;
-}
-
-/*
-  Та же подложка, что у сердечка: кнопка лежит поверх постера, а постер бывает
-  любой — от чёрного кадра до белого. Токен темы, а не константа rgba, чтобы
-  иконка читалась и в светлой палитре, и в тёмной.
-*/
-.media-card__chip-btn {
-  background: rgba(var(--v-theme-surface), 0.82);
 }
 
 .media-card {
@@ -167,35 +139,26 @@ const rating = computed(() => formatRating(props.item.voteAverage))
   }
 }
 
-/*
-  Строка метаданных идёт под постером, название — под ней. Так расстояние от
-  постера до чипа и от чипа до названия постоянно, а вся неопределённость
-  высоты уезжает за последнюю строку названия, где её не видно.
-
-  Порядок меняется через column-reverse, а не в разметке: в DOM название
-  остаётся первым, и скринридер читает ссылку как «Название, Сериал, 2016, 7.1».
-*/
+/* Название идёт под постером, строка метаданных — под ним. */
 .media-card__body {
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   gap: 8px;
 }
 
 .media-card__title {
   transition: color 0.2s ease;
-  /* Длинные названия обрезаем на второй строке, иначе карточки в ряду разъезжаются. */
+  /*
+    Длинные названия обрезаем на второй строке, иначе карточки в ряду
+    разъезжаются. Место под вторую строку намеренно не резервируем: у
+    большинства названий она пустая, и однострочные карточки в ряду будут
+    на 20px короче двухстрочных соседей — это дешевле, чем пустое место под
+    каждым однострочным названием.
+  */
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   overflow: hidden;
-  /*
-    Место под вторую строку резервируется всегда — но теперь оно уходит вниз,
-    за последнюю строку, и на прозрачном фоне не видно. Нужно оно ради ряда,
-    где все названия короткие: без резерва он стал бы на 20px ниже соседних,
-    и ровно на эти 20px дёргалась бы вёрстка при подмене скелетонов данными.
-    40px — две строки text-body-medium (14px × 1.428).
-  */
-  min-height: 40px;
 }
 </style>

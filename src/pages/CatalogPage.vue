@@ -111,10 +111,19 @@ const activeFilterCount = computed(() => {
   <v-container class="py-6">
     <div class="d-flex align-center flex-wrap ga-3 mb-4">
       <h1 class="text-headline-small">{{ heading }}</h1>
-      <span
-        v-if="!loading && !error && totalResults > 0"
-        class="text-body-medium text-medium-emphasis"
-      >
+
+      <!--
+        Место под текст занято уже во время загрузки: иначе на мобилке он
+        появляется после ответа сервера, строка переносится и кнопка «Фильтры»
+        прыгает вниз.
+      -->
+      <v-skeleton-loader
+        v-if="loading"
+        type="text"
+        class="catalog-found-skeleton"
+        aria-hidden="true"
+      />
+      <span v-else-if="!error && totalResults > 0" class="text-body-medium text-medium-emphasis">
         {{ foundText }}
       </span>
 
@@ -207,6 +216,16 @@ const activeFilterCount = computed(() => {
 </template>
 
 <style scoped>
+/* Ширина под типичный текст «Найдено 1 234 результата». */
+.catalog-found-skeleton {
+  width: 190px;
+  background: transparent;
+}
+
+.catalog-found-skeleton :deep(.v-skeleton-loader__text) {
+  margin: 0;
+}
+
 .catalog-layout {
   display: grid;
   /*
