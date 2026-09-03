@@ -1,107 +1,58 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { mdiHeartOutline, mdiTagMultipleOutline, mdiTagOutline } from '@mdi/js'
+import { computed, ref } from 'vue'
+import { mdiHeartOutline, mdiPlus } from '@mdi/js'
 
-import FavoriteTagBar from '@/components/FavoriteTagBar.vue'
-import MediaGrid from '@/components/MediaGrid.vue'
-import TagManagerDialog from '@/components/TagManagerDialog.vue'
+import CategoryNameDialog from '@/components/CategoryNameDialog.vue'
+import CategoryTile from '@/components/CategoryTile.vue'
 import { useFavoritesStore } from '@/stores/favorites'
-import {
-  filterFavorites,
-  hasActiveFavoritesFilters,
-  isFavoritesSortKey,
-  parseFavoritesQuery,
-  sortFavorites,
-  toFavoritesQuery,
-  UNTAGGED,
-  type FavoritesFilters,
-  type FavoritesSortKey,
-  type FavoritesType,
-} from '@/utils/favorites'
+import { UNCATEGORIZED, type Category } from '@/types/favorites'
 import { formatNumber, plural } from '@/utils/format'
-
-const TYPE_OPTIONS: { value: FavoritesType; title: string }[] = [
-  { value: 'all', title: 'Все' },
-  { value: 'movie', title: 'Фильмы' },
-  { value: 'tv', title: 'Сериалы' },
-]
-
-const SORT_OPTIONS: { value: FavoritesSortKey; title: string }[] = [
-  { value: 'added', title: 'По добавлению' },
-  { value: 'title', title: 'По названию' },
-  { value: 'year', title: 'По году' },
-  { value: 'rating', title: 'По рейтингу' },
-]
-
-const route = useRoute()
-const router = useRouter()
 
 const favorites = useFavoritesStore()
 
-/**
- * Источник правды — URL, как в каталоге и поиске: бесплатно даёт «назад/вперёд»,
- * перезагрузку и ссылку на подборку, которой можно поделиться.
- */
-const filters = computed(() => parseFavoritesQuery(route.query))
+const nameDialogOpen = ref(false)
+/** Что правит диалог имени: `null` — создание новой категории. */
+const editing = ref<Category | null>(null)
 
-const managerOpen = ref(false)
-
-/*
-  Метку могли удалить в диалоге прямо сейчас или открыть старую ссылку на давно
-  удалённую — в обоих случаях в URL остаётся id, которому ничего не
-  соответствует, и выдача схлопывается в пустоту без объяснений. Чистим набор,
-  а не показываем «ничего не найдено».
-
-  replace, а не push: несуществующий фильтр — не шаг истории, и «назад» не
-  должно возвращать в него.
-*/
-watch([() => filters.value.tagIds, () => favorites.tags], ([tagIds]) => {
-  if (route.name !== 'favorites' || !tagIds.length) return
-
-  const known = new Set(favorites.tags.map((tag) => tag.id))
-  const alive = tagIds.filter((tagId) => tagId === UNTAGGED || known.has(tagId))
-  if (alive.length === tagIds.length) return
-
-  router.replace({ name: 'favorites', query: toFavoritesQuery({ ...filters.value, tagIds: alive }) })
-})
-
-/*
-  Охранника `route.name === 'favorites'`, как в каталоге, здесь не нужно: там он
-  отменял лишний запрос к API при уходе со страницы, а тут всё вычисляется из
-  памяти и лишний пересчёт ничего не стоит.
-*/
-const visibleItems = computed(() =>
-  sortFavorites(filterFavorites(favorites.items, filters.value), filters.value.sort),
-)
+const pendingDelete = ref<Category | null>(null)
 
 const countText = computed(() => {
   const total = favorites.count
-  const shown = visibleItems.value.length
-  const suffix = plural(shown, ['тайтл', 'тайтла', 'тайтлов'])
-
-  // Пока фильтр не применён, «127 из 127» выглядело бы как ошибка.
-  return shown === total
-    ? `${formatNumber(total)} ${suffix}`
-    : `${formatNumber(shown)} из ${formatNumber(total)} ${suffix}`
+  return `${formatNumber(total)} ${plural(total, ['тайтл', 'тайтла', 'тайтлов'])}`
 })
 
-const filtersApplied = computed(() => hasActiveFavoritesFilters(filters.value))
+/**
+ * «Без категории» показываем только пока в ней что-то лежит: пустая плитка
+ * рядом с созданными вручную выглядела бы как настоящая категория, которую
+ * почему-то нельзя ни переименовать, ни удалить.
+ */
+const uncategorizedCount = computed(() => favorites.categoryCounts.get(UNCATEGORIZED) ?? 0)
 
-function apply(patch: Partial<FavoritesFilters>): void {
-  router.push({ name: 'favorites', query: toFavoritesQuery({ ...filters.value, ...patch }) })
+const isEmpty = computed(() => !favorites.count && !favorites.categories.length)
+
+function openNameDialog(category: Category | null): void {
+  editing.value = category
+  nameDialogOpen.value = true
 }
 
-function onTypeChange(value: unknown): void {
-  if (value === 'all' || value === 'movie' || value === 'tv') apply({ type: value })
-}
+/**
+ * Называем цену числом: «удалить категорию» звучит безобидно ровно до момента,
+ * когда в ней три десятка тайтлов.
+ */
+const deleteText = computed(() => {
+  const category = pendingDelete.value
+  if (!category) return ''
 
-function onSortChange(value: unknown): void {
-  if (isFavoritesSortKey(value)) apply({ sort: value })
-}
+  const count = favorites.categoryCounts.get(category.id) ?? 0
+  if (!count) return `Удалить категорию «${category.name}»? В ней ничего нет.`
 
-function resetFilters(): void {
-  router.push({ name: 'favorites' })
+  const suffix = plural(count, ['тайтл переедет', 'тайтла переедут', 'тайтлов переедут'])
+  return `Удалить категорию «${category.name}»? ${formatNumber(count)} ${suffix} в «Без категории» — из избранного они не пропадут.`
+})
+
+function onConfirmDelete(): void {
+  if (pendingDelete.value) favorites.deleteCategory(pendingDelete.value.id)
+  pendingDelete.value = null
 }
 </script>
 
@@ -112,108 +63,105 @@ function resetFilters(): void {
       <span v-if="favorites.count" class="text-body-medium text-medium-emphasis">
         {{ countText }}
       </span>
-
-      <v-spacer />
-
-      <v-btn
-        v-if="favorites.count"
-        :prepend-icon="mdiTagMultipleOutline"
-        variant="text"
-        size="small"
-        @click="managerOpen = true"
-      >
-        Метки
-      </v-btn>
     </div>
 
-    <TagManagerDialog v-model="managerOpen" />
+    <v-empty-state
+      v-if="isEmpty"
+      :icon="mdiHeartOutline"
+      title="Здесь пока пусто"
+      text="Нажмите сердечко на карточке или на странице тайтла — он появится здесь."
+    >
+      <template #actions>
+        <v-btn :to="{ name: 'search' }" variant="tonal">Перейти к поиску</v-btn>
+      </template>
+    </v-empty-state>
 
     <!--
-      Фильтры встроены в шапку, а не спрятаны в сайдбар с полноэкранным диалогом,
-      как в каталоге: здесь их всего три, и главный — метки, ради которых на
-      страницу и заходят. Прятать их за кнопкой «Фильтры» значило бы прятать
-      навигацию по коллекции.
+      Та же сетка, что у карточек: плитка категории по построению имеет
+      пропорции постера, поэтому на 375px обе раскладки дают две колонки, а
+      переход с экрана категорий внутрь не меняет ритм страницы.
     -->
-    <template v-if="favorites.count">
-      <!-- Меток ещё нет: полоса пуста, и вместо неё нужна подсказка, откуда они
-           берутся — иначе способ разложить коллекцию просто не виден. -->
-      <p v-if="!favorites.tags.length" class="text-body-medium text-medium-emphasis mb-3">
-        Меток пока нет. Нажмите
-        <v-icon :icon="mdiTagOutline" size="16" class="mx-1" />
-        на карточке, чтобы разложить коллекцию по своим категориям.
-      </p>
-
-      <FavoriteTagBar
-        v-else
-        :tag-ids="filters.tagIds"
-        class="mb-3"
-        @change="(tagIds) => apply({ tagIds })"
+    <div v-else class="category-grid">
+      <CategoryTile
+        v-for="category in favorites.categories"
+        :key="category.id"
+        :category-id="category.id"
+        :name="category.name"
+        manageable
+        @rename="openNameDialog(category)"
+        @remove="pendingDelete = category"
       />
 
-      <div class="d-flex align-center flex-wrap ga-3 mb-4">
-        <v-btn-toggle
-          :model-value="filters.type"
-          mandatory
-          density="compact"
-          variant="outlined"
-          divided
-          @update:model-value="onTypeChange"
-        >
-          <v-btn v-for="option in TYPE_OPTIONS" :key="option.value" :value="option.value">
-            {{ option.title }}
-          </v-btn>
-        </v-btn-toggle>
+      <CategoryTile
+        v-if="uncategorizedCount"
+        :category-id="UNCATEGORIZED"
+        name="Без категории"
+      />
 
-        <v-spacer class="d-none d-sm-block" />
+      <!--
+        Кнопка, а не плитка-ссылка: создание не ведёт на другой адрес. Нативный
+        button ради клавиатуры — Enter и пробел работают без обработчиков.
+      -->
+      <button type="button" class="category-new" @click="openNameDialog(null)">
+        <v-icon :icon="mdiPlus" size="32" />
+        <span class="text-body-medium">Новая категория</span>
+      </button>
+    </div>
 
-        <v-select
-          :model-value="filters.sort"
-          :items="SORT_OPTIONS"
-          label="Сортировка"
-          density="compact"
-          variant="outlined"
-          hide-details
-          class="sort-select"
-          @update:model-value="onSortChange"
-        />
+    <CategoryNameDialog v-model="nameDialogOpen" :category="editing" />
 
-        <v-btn v-if="filtersApplied" variant="text" size="small" @click="resetFilters">
-          Сбросить
-        </v-btn>
-      </div>
-    </template>
-
-    <!--
-      Пагинации здесь нет намеренно: список лежит в памяти целиком, страницы
-      делить не из чего. Сетка та же, что в поиске, — карточки должны выглядеть
-      одинаково везде.
-    -->
-    <MediaGrid
-      :items="visibleItems"
-      with-tags
-      :empty-icon="mdiHeartOutline"
-      :empty-title="filtersApplied ? 'По этому фильтру ничего нет' : 'Здесь пока пусто'"
-      :empty-text="
-        filtersApplied
-          ? 'Попробуйте выбрать другую метку или снять ограничение по типу.'
-          : 'Нажмите сердечко на карточке или на странице тайтла — он появится здесь.'
-      "
+    <v-dialog
+      :model-value="pendingDelete !== null"
+      max-width="420"
+      @update:model-value="pendingDelete = null"
     >
-      <template #empty-actions>
-        <v-btn v-if="filtersApplied" variant="tonal" @click="resetFilters">Сбросить фильтры</v-btn>
-        <v-btn v-else :to="{ name: 'search' }" variant="tonal">Перейти к поиску</v-btn>
-      </template>
-    </MediaGrid>
+      <v-card title="Удаление категории" :text="deleteText">
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="pendingDelete = null">Отмена</v-btn>
+          <v-btn variant="tonal" color="error" @click="onConfirmDelete">Удалить</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <style scoped>
+/* Повторяет .media-grid: минимум колонки 150px, чтобы на 375px влезли две. */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 20px 16px;
+}
+
 /*
-  Селект без ширины растянулся бы на весь остаток строки. Фиксированная ширина
-  оставляет его в одном ряду с переключателем типа даже на 390 px — иначе ряд
-  разъезжается на две строки и шапка растёт ровно там, где место дороже всего.
+  Высота — по обложке, без подписи снизу: align-self не даёт кнопке растянуться
+  на всю высоту ячейки вместе с именем и счётчиком соседних плиток.
 */
-.sort-select {
-  max-width: 200px;
+.category-new {
+  aspect-ratio: 2 / 3;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed rgba(var(--v-border-color), 0.4);
+  border-radius: 8px;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.75;
+  transition:
+    opacity 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.category-new:hover {
+  opacity: 1;
+  border-color: rgb(var(--v-theme-primary));
+}
+
+.category-new:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
 }
 </style>

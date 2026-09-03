@@ -15,7 +15,7 @@ import type { MediaItem } from '@/api/types'
 const item = ref<MediaItem | null>(null)
 const isOpen = ref(false)
 
-export function useTagSheet() {
+export function useCategorySheet() {
   function open(target: MediaItem): void {
     item.value = target
     isOpen.value = true

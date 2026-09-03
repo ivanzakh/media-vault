@@ -5,8 +5,8 @@ import { firstValue } from '@/utils/query'
 
 /**
  * В избранном «Все» — полноценное значение по умолчанию, а не отсутствие
- * фильтра: коллекция смешанная, и разделять её на фильмы и сериалы нужно не
- * всегда. В каталоге такого варианта нет — там тип задаёт сам эндпоинт TMDB.
+ * фильтра: категория бывает смешанной, и разделять её на фильмы и сериалы нужно
+ * не всегда. В каталоге такого варианта нет — там тип задаёт сам эндпоинт TMDB.
  */
 export type FavoritesType = 'all' | 'movie' | 'tv'
 
@@ -22,29 +22,17 @@ export const DEFAULT_FAVORITES_TYPE: FavoritesType = 'all'
 export const DEFAULT_FAVORITES_SORT: FavoritesSortKey = 'added'
 
 /**
- * Псевдо-метка «Без меток». Живёт в том же списке, что и настоящие: иначе
- * неразобранные тайтлы было бы нечем найти, а отдельный переключатель рядом с
- * чипами выглядел бы как фильтр другого рода, хотя выбор здесь один и тот же.
- * Значение не может совпасть с настоящим id: те всегда вида `t<число>`.
+ * Фильтры действуют внутри одной категории. Самой категории здесь нет: она
+ * приходит параметром маршрута (`/favorites/c1`), а не строкой запроса — это
+ * адрес страницы, а не её настройка.
  */
-export const UNTAGGED = 'none'
-
 export interface FavoritesFilters {
   type: FavoritesType
   sort: FavoritesSortKey
-  /** Может содержать `UNTAGGED` наравне с обычными id. */
-  tagIds: string[]
 }
 
 export function isFavoritesSortKey(value: unknown): value is FavoritesSortKey {
   return typeof value === 'string' && (FAVORITES_SORT_KEYS as readonly string[]).includes(value)
-}
-
-function parseTagIds(raw: string): string[] {
-  if (!raw) return []
-
-  // Дубли безвредны для фильтрации, но ломали бы состояние чипов.
-  return [...new Set(raw.split('|').filter(Boolean))]
 }
 
 /**
@@ -58,50 +46,29 @@ export function parseFavoritesQuery(query: LocationQuery): FavoritesFilters {
   return {
     type: rawType === 'movie' || rawType === 'tv' ? rawType : DEFAULT_FAVORITES_TYPE,
     sort: isFavoritesSortKey(rawSort) ? rawSort : DEFAULT_FAVORITES_SORT,
-    tagIds: parseTagIds(firstValue(query.tags)),
   }
 }
 
 /**
- * Обратная сборка. Значения по умолчанию в URL не пишем: избранное без фильтров
- * должно оставаться просто `/favorites`, а не `/favorites?type=all&sort=added`.
+ * Обратная сборка. Значения по умолчанию в URL не пишем: категория без фильтров
+ * должна оставаться просто `/favorites/c1`, а не `/favorites/c1?type=all&sort=added`.
  */
 export function toFavoritesQuery(filters: FavoritesFilters): LocationQueryRaw {
   const query: LocationQueryRaw = {}
 
   if (filters.type !== DEFAULT_FAVORITES_TYPE) query.type = filters.type
   if (filters.sort !== DEFAULT_FAVORITES_SORT) query.sort = filters.sort
-  if (filters.tagIds.length) query.tags = filters.tagIds.join('|')
 
   return query
 }
 
 export function hasActiveFavoritesFilters(filters: FavoritesFilters): boolean {
-  return (
-    filters.type !== DEFAULT_FAVORITES_TYPE ||
-    filters.sort !== DEFAULT_FAVORITES_SORT ||
-    filters.tagIds.length > 0
-  )
+  return filters.type !== DEFAULT_FAVORITES_TYPE || filters.sort !== DEFAULT_FAVORITES_SORT
 }
 
-/**
- * Метки складываются по ИЛИ: выбор второй метки расширяет выдачу, а не сужает.
- * Так же ведут себя жанры в каталоге, и одинаковое поведение на двух экранах
- * важнее теоретической пользы от пересечения — при И выдача схлопывалась бы в
- * ноль на любой неудачной паре, и это выглядело бы как поломка.
- */
 export function filterFavorites(items: FavoriteItem[], filters: FavoritesFilters): FavoriteItem[] {
-  const wanted = new Set(filters.tagIds)
-  const withoutTags = wanted.delete(UNTAGGED)
-  const byTags = withoutTags || wanted.size > 0
-
-  return items.filter((item) => {
-    if (filters.type !== 'all' && item.mediaType !== filters.type) return false
-    if (!byTags) return true
-
-    if (withoutTags && !item.tagIds.length) return true
-    return item.tagIds.some((tagId) => wanted.has(tagId))
-  })
+  if (filters.type === 'all') return items
+  return items.filter((item) => item.mediaType === filters.type)
 }
 
 /** `null` в конец при любой сортировке: «неизвестно» — не то же самое, что «мало». */

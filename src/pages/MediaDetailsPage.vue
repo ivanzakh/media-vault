@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onScopeDispose, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { mdiAccountOutline, mdiStar, mdiTagOutline } from '@mdi/js'
+import { mdiAccountOutline, mdiFolderOutline, mdiStar } from '@mdi/js'
 
 import { isAbortError, TmdbError } from '@/api/client'
 import { getDetails, imageUrl } from '@/api/media'
 import type { MediaDetails, MediaType } from '@/api/types'
 import FavoriteButton from '@/components/FavoriteButton.vue'
 import MediaPoster from '@/components/MediaPoster.vue'
-import { useTagSheet } from '@/composables/useTagSheet'
+import { useCategorySheet } from '@/composables/useCategorySheet'
 import { useFavoritesStore } from '@/stores/favorites'
 import {
   detailsToMediaItem,
@@ -26,7 +26,7 @@ const CAST_LIMIT = 6
 const route = useRoute()
 
 const favorites = useFavoritesStore()
-const tagSheet = useTagSheet()
+const categorySheet = useCategorySheet()
 
 const details = ref<MediaDetails | null>(null)
 const loading = ref(false)
@@ -146,15 +146,19 @@ const isSaved = computed(() =>
     : false,
 )
 
-const tagNames = computed(() => {
-  if (!favoriteItem.value) return []
+/**
+ * Имя категории показываем именно здесь, в отличие от карточек в сетке: на
+ * детальной странице тайтл один, и вопрос «а куда я его положил» осмысленный.
+ * `null` — тайтл не сохранён либо лежит без категории.
+ */
+const categoryName = computed(() => {
+  if (!favoriteItem.value) return null
 
-  // Идём по реестру, а не по `tagIds` записи: порядок задан в диалоге
-  // управления, и он должен быть одним на всех экранах.
-  const assigned = new Set(
-    favorites.itemTagIds(favoriteItem.value.mediaType, favoriteItem.value.id),
+  const categoryId = favorites.itemCategoryId(
+    favoriteItem.value.mediaType,
+    favoriteItem.value.id,
   )
-  return favorites.tags.filter((tag) => assigned.has(tag.id)).map((tag) => tag.name)
+  return favorites.categories.find((category) => category.id === categoryId)?.name ?? null
 })
 
 const votesText = computed(() => {
@@ -264,23 +268,21 @@ const votesText = computed(() => {
                 <FavoriteButton :item="favoriteItem" with-label />
 
                 <!--
-                  Кнопка появляется только у сохранённого тайтла: вешать метки
-                  на то, чего нет в избранном, некуда.
+                  Кнопка появляется только у сохранённого тайтла: раскладывать
+                  по категориям то, чего нет в избранном, некуда.
                 -->
                 <v-btn
                   v-if="isSaved"
-                  :prepend-icon="mdiTagOutline"
+                  :prepend-icon="mdiFolderOutline"
                   variant="tonal"
-                  @click="tagSheet.open(favoriteItem)"
+                  @click="categorySheet.open(favoriteItem)"
                 >
-                  Метки
+                  Категория
                 </v-btn>
               </div>
 
-              <div v-if="tagNames.length" class="d-flex flex-wrap ga-2 mt-3">
-                <v-chip v-for="name in tagNames" :key="name" size="small" variant="tonal">
-                  {{ name }}
-                </v-chip>
+              <div v-if="categoryName" class="d-flex flex-wrap ga-2 mt-3">
+                <v-chip size="small" variant="tonal">{{ categoryName }}</v-chip>
               </div>
             </div>
 

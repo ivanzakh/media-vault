@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { mdiStar, mdiTagOutline } from '@mdi/js'
+import { mdiFolderOutline, mdiStar } from '@mdi/js'
 
 import type { MediaItem } from '@/api/types'
-import { useTagSheet } from '@/composables/useTagSheet'
-import { useFavoritesStore } from '@/stores/favorites'
+import { useCategorySheet } from '@/composables/useCategorySheet'
 import { formatRating, mediaTypeLabel } from '@/utils/format'
 import FavoriteButton from './FavoriteButton.vue'
 import MediaPoster from './MediaPoster.vue'
@@ -13,28 +12,20 @@ const props = withDefaults(
   defineProps<{
     item: MediaItem
     /**
-     * Метки и кнопка их правки. Только для избранного: в каталоге и поиске
-     * большинство карточек не сохранено, и пустое место под чипы там было бы
-     * пустым у всей сетки.
+     * Кнопка смены категории. Только для избранного: в каталоге и поиске
+     * большинство карточек не сохранено, и перекладывать там нечего.
+     *
+     * Имя категории на карточке не показываем: сетка всегда принадлежит одной
+     * категории, и подпись была бы одинаковой у всех карточек сразу.
      */
-    withTags?: boolean
+    withCategory?: boolean
   }>(),
-  { withTags: false },
+  { withCategory: false },
 )
 
-const favorites = useFavoritesStore()
-const tagSheet = useTagSheet()
+const categorySheet = useCategorySheet()
 
 const rating = computed(() => formatRating(props.item.voteAverage))
-
-const tagNames = computed(() => {
-  if (!props.withTags) return []
-
-  const assigned = new Set(favorites.itemTagIds(props.item.mediaType, props.item.id))
-  // Идём по реестру, а не по `tagIds` записи: порядок меток задан в диалоге
-  // управления, и на карточках он должен быть тем же, что в шапке.
-  return favorites.tags.filter((tag) => assigned.has(tag.id)).map((tag) => tag.name)
-})
 </script>
 
 <template>
@@ -81,17 +72,6 @@ const tagNames = computed(() => {
       </div>
     </v-card>
 
-    <!--
-      Метки под карточкой, а не внутри ссылки: строка растёт по числу меток, а
-      у .media-card__body высота выверена под скелетоны сетки — лишний блок
-      внутри рассинхронизировал бы их.
-    -->
-    <div v-if="tagNames.length" class="media-card__tags d-flex flex-wrap ga-1 pt-2">
-      <v-chip v-for="name in tagNames" :key="name" size="x-small" variant="tonal" :title="name">
-        {{ name }}
-      </v-chip>
-    </div>
-
     <div class="media-card__actions">
       <!--
         Отдельная кнопка, а не открытие листа по сердечку: сердечко на уже
@@ -100,13 +80,13 @@ const tagNames = computed(() => {
         экране ради редкого сценария.
       -->
       <v-btn
-        v-if="withTags"
-        :icon="mdiTagOutline"
-        :aria-label="`Метки: ${item.title}`"
+        v-if="withCategory"
+        :icon="mdiFolderOutline"
+        :aria-label="`Категория: ${item.title}`"
         variant="text"
         size="small"
         class="media-card__chip-btn"
-        @click="tagSheet.open(item)"
+        @click="categorySheet.open(item)"
       />
       <FavoriteButton :item="item" />
     </div>
@@ -134,11 +114,6 @@ const tagNames = computed(() => {
 */
 .media-card__chip-btn {
   background: rgba(var(--v-theme-surface), 0.82);
-}
-
-/* Длинное имя метки не должно распирать колонку сетки. */
-.media-card__tags .v-chip {
-  max-width: 100%;
 }
 
 .media-card {

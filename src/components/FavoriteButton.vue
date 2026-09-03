@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { mdiHeart, mdiHeartOutline } from '@mdi/js'
 
 import type { MediaItem } from '@/api/types'
-import { useTagSheet } from '@/composables/useTagSheet'
+import { useCategorySheet } from '@/composables/useCategorySheet'
 import { useFavoritesStore } from '@/stores/favorites'
 
 const props = withDefaults(
@@ -16,21 +16,21 @@ const props = withDefaults(
 )
 
 const favorites = useFavoritesStore()
-const tagSheet = useTagSheet()
+const categorySheet = useCategorySheet()
 
 const active = computed(() => favorites.isFavorite(props.item.mediaType, props.item.id))
 const label = computed(() => (active.value ? 'В избранном' : 'В избранное'))
 
 /**
- * Добавление сразу открывает лист меток: разложить тайтл проще в тот момент,
- * когда его сохраняют, а не потом, разбирая накопившуюся кучу. Лист можно
- * закрыть не глядя — тайтл останется в избранном без меток.
+ * Добавление сразу открывает лист категорий: разложить тайтл проще в тот
+ * момент, когда его сохраняют, а не потом, разбирая накопившуюся кучу. Лист
+ * можно закрыть не глядя — тайтл останется в избранном «Без категории».
  *
  * При удалении лист не открывается: там решение уже принято, и любое окно
  * поверх было бы лишним шагом.
  */
 function onClick(): void {
-  if (favorites.toggle(props.item)) tagSheet.open(props.item)
+  if (favorites.toggle(props.item)) categorySheet.open(props.item)
 }
 </script>
 

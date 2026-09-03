@@ -18,6 +18,14 @@ const router = createRouter({
       component: () => import('@/pages/FavoritesPage.vue'),
     },
     {
+      // Значения — `c<число>` и `none` («Без категории»). Ограничения в пути
+      // нет намеренно: мусорный id должен вернуть на список категорий, а не в
+      // «страница не найдена» — сама страница избранного при этом существует.
+      path: '/favorites/:categoryId',
+      name: 'favorites-category',
+      component: () => import('@/pages/FavoriteCategoryPage.vue'),
+    },
+    {
       // Ограничение (movie|tv) не даёт /search и /favorites попасть под этот маршрут.
       path: '/:mediaType(movie|tv)/:id(\\d+)',
       name: 'details',

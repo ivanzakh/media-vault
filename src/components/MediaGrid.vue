@@ -15,8 +15,8 @@ withDefaults(
     emptyText?: string
     /** Путь SVG из @mdi/js: у пустого поиска и пустого избранного смысл разный. */
     emptyIcon?: string
-    /** Проброс в карточки: метки и кнопка их правки нужны только в избранном. */
-    withTags?: boolean
+    /** Проброс в карточки: кнопка смены категории нужна только в избранном. */
+    withCategory?: boolean
   }>(),
   {
     loading: false,
@@ -25,7 +25,7 @@ withDefaults(
     emptyTitle: 'Ничего не найдено',
     emptyText: 'Попробуйте изменить запрос.',
     emptyIcon: mdiMagnify,
-    withTags: false,
+    withCategory: false,
   },
 )
 
@@ -68,7 +68,7 @@ const emit = defineEmits<{ retry: [] }>()
       v-for="item in items"
       :key="`${item.mediaType}:${item.id}`"
       :item="item"
-      :with-tags="withTags"
+      :with-category="withCategory"
     />
   </div>
 </template>
