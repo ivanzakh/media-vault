@@ -1,4 +1,4 @@
-name: Deploy to ivanzakh.github.io
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -6,15 +6,22 @@ on:
     paths-ignore: ['README.md', '.gitignore']
   workflow_dispatch:
 
-# The deploy action does a plain (non-force) push and doesn't retry on
-# conflict. Without this, two quick pushes in a row would give a
-# non-fast-forward on the second one and a red build.
+# Права нужны самому GITHUB_TOKEN: pages — публиковать, id-token — получить
+# OIDC-токен, которым actions/deploy-pages подтверждает происхождение артефакта.
+# Отдельный PAT при таком деплое не нужен.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Промежуточные сборки отменяем, но начавшийся выкат не трогаем: прерванный
+# deploy-pages оставляет окружение github-pages в статусе in_progress.
 concurrency:
-  group: deploy-site
-  cancel-in-progress: true
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,19 +36,23 @@ jobs:
         env:
           VITE_TMDB_TOKEN: ${{ secrets.VITE_TMDB_TOKEN }}
 
-      # Classic GitHub Pages не умеет rewrite: без dist/404.html прямой заход
-      # или F5 на /movie/603 отдаст голый 404 вместо приложения.
+      # Pages не умеет rewrite, но project site отдаёт собственный 404.html на
+      # любой несуществующий путь внутри /media-vault/. Скрипт postbuild кладёт
+      # туда копию index.html — этим и живут прямой заход и F5 на /movie/603.
       - name: Verify SPA fallback was built
         run: test -f dist/404.html
 
-      - name: Deploy to ivanzakh.github.io
-        uses: peaceiris/actions-gh-pages@v4
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
-          personal_token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
-          external_repository: ivanzakh/ivanzakh.github.io
-          publish_branch: master # ivanzakh.github.io's branch, not media-vault's
-          publish_dir: ./dist
-          destination_dir: projects/media-vault
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
-          # NEVER set force_orphan: true here — see README.md "Деплой".
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
