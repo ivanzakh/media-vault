@@ -173,7 +173,7 @@ const activeFilterCount = computed(() => {
 
         <!-- Число страниц клампится потолком TMDB в 500: у широкой выборки
              total_results уходит в сотни тысяч, но 501-я страница вернёт ошибку. -->
-        <div v-if="!loading && !error && pageCount > 1" class="d-flex justify-center mt-8">
+        <div v-if="!loading && !error && pageCount > 1" class="mt-8">
           <v-pagination
             :model-value="filters.page"
             :length="pageCount"

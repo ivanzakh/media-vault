@@ -82,7 +82,7 @@ const skeletonCount = computed(() => {
         Число страниц клампится потолком TMDB в 500: при широком запросе
         total_results уходит в десятки тысяч, но страницы после 500-й вернут ошибку.
       -->
-      <div v-if="!loading && !error && pageCount > 1" class="d-flex justify-center mt-8">
+      <div v-if="!loading && !error && pageCount > 1" class="mt-8">
         <v-pagination
           :model-value="page"
           :length="pageCount"
