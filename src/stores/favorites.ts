@@ -388,6 +388,71 @@ export const useFavoritesStore = defineStore('favorites', () => {
     )
   }
 
+  /** Тот же формат, что и в `localStorage`, — с отступами, чтобы файл можно было открыть и прочитать. */
+  function exportToJson(): string {
+    const payload: StoredPayload = {
+      version: STORAGE_VERSION,
+      items: items.value,
+      categories: categories.value,
+      nextCategoryId: nextCategoryId.value,
+    }
+    return JSON.stringify(payload, null, 2)
+  }
+
+  /**
+   * Слияние, а не замена: уже сохранённые тайтлы не трогаем, импортированные
+   * категории находим по имени или заводим заново через `createCategory` —
+   * поэтому id категорий из файла переносить напрямую нельзя, они могут не
+   * совпадать с локальными.
+   */
+  function importFromJson(json: string): { added: number; skipped: number } {
+    let payload: unknown
+    try {
+      payload = JSON.parse(json)
+    } catch {
+      throw new Error('Файл повреждён: это не JSON')
+    }
+
+    if (typeof payload !== 'object' || payload === null) {
+      throw new Error('Файл не похож на экспорт избранного Media Vault')
+    }
+
+    const stored = payload as Partial<StoredPayload>
+    if (!Array.isArray(stored.items)) {
+      throw new Error('Файл не похож на экспорт избранного Media Vault')
+    }
+
+    const parsedItems = stored.items
+      .map(parseItem)
+      .filter((entry): entry is ParsedItem => entry !== null)
+    const parsedCategories = Array.isArray(stored.categories)
+      ? stored.categories.map(parseCategory).filter((category): category is Category => category !== null)
+      : []
+
+    const categoryIdMap = new Map<string, string>()
+    for (const category of parsedCategories) {
+      const target = createCategory(category.name)
+      if (target) categoryIdMap.set(category.id, target.id)
+    }
+
+    let added = 0
+    let skipped = 0
+
+    for (const { item } of parsedItems) {
+      if (keys.value.has(keyOf(item))) {
+        skipped += 1
+        continue
+      }
+
+      add(item)
+      const mapped = categoryIdMap.get(item.categoryId)
+      if (mapped) setItemCategory(item.mediaType, item.id, mapped)
+      added += 1
+    }
+
+    return { added, skipped }
+  }
+
   // Массивы заменяются целиком, а не мутируются, поэтому deep-вотчер не нужен.
   watch([items, categories, nextCategoryId], () => {
     persist({
@@ -413,5 +478,7 @@ export const useFavoritesStore = defineStore('favorites', () => {
     createCategory,
     renameCategory,
     deleteCategory,
+    exportToJson,
+    importFromJson,
   }
 })

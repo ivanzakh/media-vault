@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { mdiHeartOutline, mdiMovieOpenOutline } from '@mdi/js'
+import { mdiHeartOutline, mdiMovieOpenOutline, mdiTrayArrowDown, mdiTrayArrowUp } from '@mdi/js'
+import { reactive, ref } from 'vue'
 import { useDisplay } from 'vuetify'
 
 import FavoriteCategorySheet from '@/components/FavoriteCategorySheet.vue'
@@ -9,6 +10,49 @@ import { useFavoritesStore } from '@/stores/favorites'
 const { smAndDown } = useDisplay()
 
 const favorites = useFavoritesStore()
+
+const importInput = ref<HTMLInputElement | null>(null)
+
+const snackbar = reactive({ open: false, text: '', color: 'success' })
+
+function showSnackbar(text: string, color: 'success' | 'error'): void {
+  snackbar.text = text
+  snackbar.color = color
+  snackbar.open = true
+}
+
+function exportFavorites(): void {
+  const json = favorites.exportToJson()
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `media-vault-favorites-${new Date().toISOString().slice(0, 10)}.json`
+  link.click()
+
+  URL.revokeObjectURL(url)
+}
+
+function triggerImport(): void {
+  importInput.value?.click()
+}
+
+async function onImportFileChange(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  // Сбрасываем сразу, иначе повторный выбор того же файла не вызовет change.
+  input.value = ''
+  if (!file) return
+
+  try {
+    const text = await file.text()
+    const { added, skipped } = favorites.importFromJson(text)
+    showSnackbar(`Импортировано: ${added}, уже было в избранном: ${skipped}`, 'success')
+  } catch (e) {
+    showSnackbar(e instanceof Error ? e.message : 'Не удалось импортировать файл', 'error')
+  }
+}
 </script>
 
 <template>
@@ -65,15 +109,48 @@ const favorites = useFavoritesStore()
       окна — v-main занимает весь остаток высоты. flex-grow-0 нужен, чтобы этот
       остаток не делился между ними: у .v-footer в стилях flex: 1 1 auto.
     -->
-    <v-footer color="surface" border class="justify-center flex-grow-0">
-      <div class="text-center text-body-small text-medium-emphasis py-2">
-        <!-- Атрибуция обязательна по условиям использования TMDB API. -->
-        <div>
+    <v-footer color="surface" border class="flex-grow-0">
+      <v-container
+        class="d-flex flex-column flex-sm-row align-center justify-sm-space-between ga-3 py-3"
+      >
+        <div class="text-center text-sm-left text-body-small text-medium-emphasis">
+          <!-- Атрибуция обязательна по условиям использования TMDB API. -->
           This product uses the TMDB API but is not endorsed or certified by
           <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDB</a>.
         </div>
-      </div>
+
+        <div class="d-flex ga-2 flex-shrink-0">
+          <v-btn
+            :prepend-icon="mdiTrayArrowDown"
+            :disabled="favorites.count === 0"
+            color="primary"
+            variant="flat"
+            @click="exportFavorites"
+          >
+            Экспорт
+          </v-btn>
+          <v-btn
+            :prepend-icon="mdiTrayArrowUp"
+            color="primary"
+            variant="flat"
+            @click="triggerImport"
+          >
+            Импорт
+          </v-btn>
+          <input
+            ref="importInput"
+            type="file"
+            accept="application/json"
+            hidden
+            @change="onImportFileChange"
+          />
+        </div>
+      </v-container>
     </v-footer>
+
+    <v-snackbar v-model="snackbar.open" :color="snackbar.color" timeout="4000">
+      {{ snackbar.text }}
+    </v-snackbar>
   </v-app>
 </template>
 
