@@ -1,29 +1,3 @@
-<script setup lang="ts">
-import { computed } from 'vue'
-import { mdiStar } from '@mdi/js'
-
-import type { MediaItem } from '@/api/types'
-import { formatRating, mediaTypeLabel } from '@/utils/format'
-import FavoriteButton from './FavoriteButton.vue'
-import MediaPoster from './MediaPoster.vue'
-
-const props = withDefaults(
-  defineProps<{
-    item: MediaItem
-    /**
-     * На карточке избранного клик по сердечку не убирает тайтл сразу, а
-     * открывает лист управления категорией — там же есть и «Убрать из
-     * избранного». В каталоге и поиске большинство карточек не сохранено,
-     * и открывать лист управления там нечем.
-     */
-    withCategory?: boolean
-  }>(),
-  { withCategory: false },
-)
-
-const rating = computed(() => formatRating(props.item.voteAverage))
-</script>
-
 <template>
   <!--
     Кнопка избранного лежит рядом с карточкой, а не внутри неё. Внутри она была
@@ -73,6 +47,32 @@ const rating = computed(() => formatRating(props.item.voteAverage))
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { mdiStar } from '@mdi/js'
+
+import type { MediaItem } from '@/api/types'
+import { formatRating, mediaTypeLabel } from '@/utils/format'
+import FavoriteButton from './FavoriteButton.vue'
+import MediaPoster from './MediaPoster.vue'
+
+const props = withDefaults(
+  defineProps<{
+    item: MediaItem
+    /**
+     * На карточке избранного клик по сердечку не убирает тайтл сразу, а
+     * открывает лист управления категорией — там же есть и «Убрать из
+     * избранного». В каталоге и поиске большинство карточек не сохранено,
+     * и открывать лист управления там нечем.
+     */
+    withCategory?: boolean
+  }>(),
+  { withCategory: false },
+)
+
+const rating = computed(() => formatRating(props.item.voteAverage))
+</script>
 
 <style scoped>
 .media-card-frame {

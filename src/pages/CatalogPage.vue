@@ -1,3 +1,111 @@
+<template>
+  <v-container class="py-6">
+    <div class="d-flex align-center flex-wrap ga-3 mb-4">
+      <h1 class="text-headline-small">{{ heading }}</h1>
+
+      <!--
+        Место под текст занято уже во время загрузки: иначе на мобилке он
+        появляется после ответа сервера, строка переносится и кнопка «Фильтры»
+        прыгает вниз.
+      -->
+      <v-skeleton-loader
+        v-if="loading"
+        type="text"
+        class="catalog-found-skeleton"
+        aria-hidden="true"
+      />
+      <span v-else-if="!error && totalResults > 0" class="text-body-medium text-medium-emphasis">
+        {{ foundText }}
+      </span>
+
+      <v-spacer />
+
+      <v-badge
+        v-if="mdAndDown"
+        :model-value="activeFilterCount > 0"
+        :content="activeFilterCount"
+        color="primary"
+      >
+        <v-btn :prepend-icon="mdiTune" variant="tonal" @click="filtersDialog = true">
+          Фильтры
+        </v-btn>
+      </v-badge>
+    </div>
+
+    <div class="catalog-layout">
+      <!--
+        Панель сбоку, а не полосой над выдачей: фильтры остаются на виду при
+        прокрутке, и менять их можно, не возвращаясь к началу страницы.
+      -->
+      <aside v-if="!mdAndDown" class="catalog-sidebar">
+        <v-sheet color="surface" border rounded="lg" class="pa-4">
+          <CatalogFiltersPanel
+            :type="filters.type"
+            :sort="filters.sort"
+            :genre-ids="filters.genreIds"
+            :year-from="filters.yearFrom"
+            :year-to="filters.yearTo"
+            @change="applyPatch"
+            @reset="resetFilters"
+          />
+        </v-sheet>
+      </aside>
+
+      <div>
+        <MediaGrid
+          :items="items"
+          :loading="loading"
+          :error="error"
+          :skeleton-count="skeletonCount"
+          empty-title="Под фильтры ничего не подошло"
+          empty-text="Расширьте диапазон лет или снимите часть жанров."
+          @retry="load"
+        />
+
+        <!-- Число страниц клампится потолком TMDB в 500: у широкой выборки
+             total_results уходит в сотни тысяч, но 501-я страница вернёт ошибку. -->
+        <div v-if="!loading && !error && pageCount > 1" class="mt-8">
+          <v-pagination
+            :model-value="filters.page"
+            :length="pageCount"
+            density="comfortable"
+            rounded="circle"
+            @update:model-value="goToPage"
+          />
+        </div>
+      </div>
+    </div>
+
+    <v-dialog v-if="mdAndDown" v-model="filtersDialog" fullscreen scrollable>
+      <v-card>
+        <v-toolbar color="surface" title="Фильтры" density="comfortable">
+          <!-- Через #append, а не дефолтный слот: иначе кнопка встала бы вплотную
+               к заголовку, а не у правого края. -->
+          <template #append>
+            <v-btn :icon="mdiClose" aria-label="Закрыть" @click="filtersDialog = false" />
+          </template>
+        </v-toolbar>
+
+        <v-card-text>
+          <CatalogFiltersPanel
+            :type="filters.type"
+            :sort="filters.sort"
+            :genre-ids="filters.genreIds"
+            :year-from="filters.yearFrom"
+            :year-to="filters.yearTo"
+            @change="applyPatch"
+            @reset="resetFilters"
+          />
+        </v-card-text>
+
+        <v-card-actions class="justify-end pa-4">
+          <v-btn variant="flat" color="primary" @click="filtersDialog = false">Показать</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-container>
+</template>
+
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -106,114 +214,6 @@ const activeFilterCount = computed(() => {
   return count
 })
 </script>
-
-<template>
-  <v-container class="py-6">
-    <div class="d-flex align-center flex-wrap ga-3 mb-4">
-      <h1 class="text-headline-small">{{ heading }}</h1>
-
-      <!--
-        Место под текст занято уже во время загрузки: иначе на мобилке он
-        появляется после ответа сервера, строка переносится и кнопка «Фильтры»
-        прыгает вниз.
-      -->
-      <v-skeleton-loader
-        v-if="loading"
-        type="text"
-        class="catalog-found-skeleton"
-        aria-hidden="true"
-      />
-      <span v-else-if="!error && totalResults > 0" class="text-body-medium text-medium-emphasis">
-        {{ foundText }}
-      </span>
-
-      <v-spacer />
-
-      <v-badge
-        v-if="mdAndDown"
-        :model-value="activeFilterCount > 0"
-        :content="activeFilterCount"
-        color="primary"
-      >
-        <v-btn :prepend-icon="mdiTune" variant="tonal" @click="filtersDialog = true">
-          Фильтры
-        </v-btn>
-      </v-badge>
-    </div>
-
-    <div class="catalog-layout">
-      <!--
-        Панель сбоку, а не полосой над выдачей: фильтры остаются на виду при
-        прокрутке, и менять их можно, не возвращаясь к началу страницы.
-      -->
-      <aside v-if="!mdAndDown" class="catalog-sidebar">
-        <v-sheet color="surface" border rounded="lg" class="pa-4">
-          <CatalogFiltersPanel
-            :type="filters.type"
-            :sort="filters.sort"
-            :genre-ids="filters.genreIds"
-            :year-from="filters.yearFrom"
-            :year-to="filters.yearTo"
-            @change="applyPatch"
-            @reset="resetFilters"
-          />
-        </v-sheet>
-      </aside>
-
-      <div>
-        <MediaGrid
-          :items="items"
-          :loading="loading"
-          :error="error"
-          :skeleton-count="skeletonCount"
-          empty-title="Под фильтры ничего не подошло"
-          empty-text="Расширьте диапазон лет или снимите часть жанров."
-          @retry="load"
-        />
-
-        <!-- Число страниц клампится потолком TMDB в 500: у широкой выборки
-             total_results уходит в сотни тысяч, но 501-я страница вернёт ошибку. -->
-        <div v-if="!loading && !error && pageCount > 1" class="mt-8">
-          <v-pagination
-            :model-value="filters.page"
-            :length="pageCount"
-            density="comfortable"
-            rounded="circle"
-            @update:model-value="goToPage"
-          />
-        </div>
-      </div>
-    </div>
-
-    <v-dialog v-if="mdAndDown" v-model="filtersDialog" fullscreen scrollable>
-      <v-card>
-        <v-toolbar color="surface" title="Фильтры" density="comfortable">
-          <!-- Через #append, а не дефолтный слот: иначе кнопка встала бы вплотную
-               к заголовку, а не у правого края. -->
-          <template #append>
-            <v-btn :icon="mdiClose" aria-label="Закрыть" @click="filtersDialog = false" />
-          </template>
-        </v-toolbar>
-
-        <v-card-text>
-          <CatalogFiltersPanel
-            :type="filters.type"
-            :sort="filters.sort"
-            :genre-ids="filters.genreIds"
-            :year-from="filters.yearFrom"
-            :year-to="filters.yearTo"
-            @change="applyPatch"
-            @reset="resetFilters"
-          />
-        </v-card-text>
-
-        <v-card-actions class="justify-end pa-4">
-          <v-btn variant="flat" color="primary" @click="filtersDialog = false">Показать</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-  </v-container>
-</template>
 
 <style scoped>
 /* Ширина под типичный текст «Найдено 1 234 результата». */

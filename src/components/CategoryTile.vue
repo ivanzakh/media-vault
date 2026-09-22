@@ -1,52 +1,3 @@
-<script setup lang="ts">
-import { computed } from 'vue'
-import { mdiDeleteOutline, mdiDotsVertical, mdiFolderOutline, mdiPencilOutline } from '@mdi/js'
-
-import MediaPoster from '@/components/MediaPoster.vue'
-import { useFavoritesStore } from '@/stores/favorites'
-import type { FavoriteItem } from '@/types/favorites'
-import { formatNumber, plural } from '@/utils/format'
-
-const props = withDefaults(
-  defineProps<{
-    categoryId: string
-    name: string
-    /** Встроенная «Без категории» не переименовывается и не удаляется. */
-    manageable?: boolean
-  }>(),
-  { manageable: false },
-)
-
-/*
-  Плитка только сообщает о намерении, а диалоги живут на странице: так их по
-  одному на весь список, а не по паре на каждую категорию, и «какую именно
-  сейчас правят» хранится в одном месте.
-*/
-const emit = defineEmits<{ rename: []; remove: [] }>()
-
-const favorites = useFavoritesStore()
-
-/**
- * Ровно четыре ячейки, недостающие — `null`. Фиксированная длина, а не
- * `slice(0, 4)`: у категории с одним тайтлом плитка должна остаться той же
- * формы, что у полной, иначе одна и та же сущность выглядит по-разному в
- * зависимости от наполнения.
- *
- * Тайтлы идут от последнего добавленного — стор кладёт новое в начало списка,
- * поэтому обложка обновляется, когда в категорию что-то кладут.
- */
-const cover = computed<(FavoriteItem | null)[]>(() => {
-  const items = favorites.itemsInCategory(props.categoryId)
-  return [0, 1, 2, 3].map((index) => items[index] ?? null)
-})
-
-const count = computed(() => favorites.categoryCounts.get(props.categoryId) ?? 0)
-
-const countText = computed(
-  () => `${formatNumber(count.value)} ${plural(count.value, ['тайтл', 'тайтла', 'тайтлов'])}`,
-)
-</script>
-
 <template>
   <!-- Рамка — система координат для кнопки меню, которая ляжет поверх обложки. -->
   <div class="category-tile-frame">
@@ -118,6 +69,55 @@ const countText = computed(
     </v-menu>
   </div>
 </template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { mdiDeleteOutline, mdiDotsVertical, mdiFolderOutline, mdiPencilOutline } from '@mdi/js'
+
+import MediaPoster from '@/components/MediaPoster.vue'
+import { useFavoritesStore } from '@/stores/favorites'
+import type { FavoriteItem } from '@/types/favorites'
+import { formatNumber, plural } from '@/utils/format'
+
+const props = withDefaults(
+  defineProps<{
+    categoryId: string
+    name: string
+    /** Встроенная «Без категории» не переименовывается и не удаляется. */
+    manageable?: boolean
+  }>(),
+  { manageable: false },
+)
+
+/*
+  Плитка только сообщает о намерении, а диалоги живут на странице: так их по
+  одному на весь список, а не по паре на каждую категорию, и «какую именно
+  сейчас правят» хранится в одном месте.
+*/
+const emit = defineEmits<{ rename: []; remove: [] }>()
+
+const favorites = useFavoritesStore()
+
+/**
+ * Ровно четыре ячейки, недостающие — `null`. Фиксированная длина, а не
+ * `slice(0, 4)`: у категории с одним тайтлом плитка должна остаться той же
+ * формы, что у полной, иначе одна и та же сущность выглядит по-разному в
+ * зависимости от наполнения.
+ *
+ * Тайтлы идут от последнего добавленного — стор кладёт новое в начало списка,
+ * поэтому обложка обновляется, когда в категорию что-то кладут.
+ */
+const cover = computed<(FavoriteItem | null)[]>(() => {
+  const items = favorites.itemsInCategory(props.categoryId)
+  return [0, 1, 2, 3].map((index) => items[index] ?? null)
+})
+
+const count = computed(() => favorites.categoryCounts.get(props.categoryId) ?? 0)
+
+const countText = computed(
+  () => `${formatNumber(count.value)} ${plural(count.value, ['тайтл', 'тайтла', 'тайтлов'])}`,
+)
+</script>
 
 <style scoped>
 .category-tile-frame {

@@ -1,3 +1,85 @@
+<template>
+  <!-- v-if по имени: пока вотчер выше не увёл на список, рисовать пустую
+       страницу несуществующей категории не нужно. -->
+  <v-container v-if="name" class="py-6">
+    <div class="d-flex align-center flex-wrap ga-2 mb-4">
+      <!--
+        Ссылка на список, а не router.back(): на страницу заходят и по прямой
+        ссылке, и тогда «назад» увело бы из приложения.
+      -->
+      <v-btn
+        :icon="mdiArrowLeft"
+        :to="{ name: 'favorites' }"
+        variant="text"
+        aria-label="К категориям"
+      />
+
+      <h1 class="text-headline-small">{{ name }}</h1>
+      <span class="text-body-medium text-medium-emphasis">{{ countText }}</span>
+    </div>
+
+    <!--
+      Фильтры встроены в шапку, а не спрятаны в диалог, как в каталоге: их всего
+      два, и прятать их за кнопкой «Фильтры» дороже, чем показать.
+
+      Прячем целиком, пока категория пуста: переключать нечего, а ряд элементов
+      управления над пустым состоянием выглядит как поломка.
+    -->
+    <div v-if="categoryItems.length" class="d-flex align-center flex-wrap ga-3 mb-4">
+      <!-- Только для смешанной категории: см. `hasBothTypes`. -->
+      <v-btn-toggle
+        v-if="hasBothTypes"
+        :model-value="filters.type"
+        mandatory
+        density="compact"
+        variant="outlined"
+        divided
+        @update:model-value="onTypeChange"
+      >
+        <v-btn v-for="option in TYPE_OPTIONS" :key="option.value" :value="option.value">
+          {{ option.title }}
+        </v-btn>
+      </v-btn-toggle>
+
+      <v-spacer class="d-none d-sm-block" />
+
+      <v-select
+        :model-value="filters.sort"
+        :items="SORT_OPTIONS"
+        label="Сортировка"
+        density="compact"
+        variant="outlined"
+        hide-details
+        class="sort-select"
+        @update:model-value="onSortChange"
+      />
+
+      <v-btn v-if="filtersApplied" variant="text" size="small" @click="resetFilters">
+        Сбросить
+      </v-btn>
+    </div>
+
+    <MediaGrid
+      :items="visibleItems"
+      with-category
+      :empty-icon="mdiFolderOutline"
+      :empty-title="emptiedByFilters ? 'По этому фильтру ничего нет' : 'В этой категории пусто'"
+      :empty-text="
+        emptiedByFilters
+          ? 'Попробуйте снять ограничение по типу.'
+          : 'Откройте тайтл в избранном и выберите эту категорию — он появится здесь.'
+      "
+    >
+      <template #empty-actions>
+        <v-btn v-if="emptiedByFilters" variant="tonal" @click="resetFilters">
+          Сбросить фильтры
+        </v-btn>
+        <v-btn v-else :to="{ name: 'favorites' }" variant="tonal">К категориям</v-btn>
+      </template>
+    </MediaGrid>
+  </v-container>
+</template>
+
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -155,88 +237,6 @@ function resetFilters(): void {
   router.push({ name: 'favorites-category', params: { categoryId: categoryId.value } })
 }
 </script>
-
-<template>
-  <!-- v-if по имени: пока вотчер выше не увёл на список, рисовать пустую
-       страницу несуществующей категории не нужно. -->
-  <v-container v-if="name" class="py-6">
-    <div class="d-flex align-center flex-wrap ga-2 mb-4">
-      <!--
-        Ссылка на список, а не router.back(): на страницу заходят и по прямой
-        ссылке, и тогда «назад» увело бы из приложения.
-      -->
-      <v-btn
-        :icon="mdiArrowLeft"
-        :to="{ name: 'favorites' }"
-        variant="text"
-        aria-label="К категориям"
-      />
-
-      <h1 class="text-headline-small">{{ name }}</h1>
-      <span class="text-body-medium text-medium-emphasis">{{ countText }}</span>
-    </div>
-
-    <!--
-      Фильтры встроены в шапку, а не спрятаны в диалог, как в каталоге: их всего
-      два, и прятать их за кнопкой «Фильтры» дороже, чем показать.
-
-      Прячем целиком, пока категория пуста: переключать нечего, а ряд элементов
-      управления над пустым состоянием выглядит как поломка.
-    -->
-    <div v-if="categoryItems.length" class="d-flex align-center flex-wrap ga-3 mb-4">
-      <!-- Только для смешанной категории: см. `hasBothTypes`. -->
-      <v-btn-toggle
-        v-if="hasBothTypes"
-        :model-value="filters.type"
-        mandatory
-        density="compact"
-        variant="outlined"
-        divided
-        @update:model-value="onTypeChange"
-      >
-        <v-btn v-for="option in TYPE_OPTIONS" :key="option.value" :value="option.value">
-          {{ option.title }}
-        </v-btn>
-      </v-btn-toggle>
-
-      <v-spacer class="d-none d-sm-block" />
-
-      <v-select
-        :model-value="filters.sort"
-        :items="SORT_OPTIONS"
-        label="Сортировка"
-        density="compact"
-        variant="outlined"
-        hide-details
-        class="sort-select"
-        @update:model-value="onSortChange"
-      />
-
-      <v-btn v-if="filtersApplied" variant="text" size="small" @click="resetFilters">
-        Сбросить
-      </v-btn>
-    </div>
-
-    <MediaGrid
-      :items="visibleItems"
-      with-category
-      :empty-icon="mdiFolderOutline"
-      :empty-title="emptiedByFilters ? 'По этому фильтру ничего нет' : 'В этой категории пусто'"
-      :empty-text="
-        emptiedByFilters
-          ? 'Попробуйте снять ограничение по типу.'
-          : 'Откройте тайтл в избранном и выберите эту категорию — он появится здесь.'
-      "
-    >
-      <template #empty-actions>
-        <v-btn v-if="emptiedByFilters" variant="tonal" @click="resetFilters">
-          Сбросить фильтры
-        </v-btn>
-        <v-btn v-else :to="{ name: 'favorites' }" variant="tonal">К категориям</v-btn>
-      </template>
-    </MediaGrid>
-  </v-container>
-</template>
 
 <style scoped>
 /*

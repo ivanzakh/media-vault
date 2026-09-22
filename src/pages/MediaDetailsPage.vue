@@ -1,3 +1,169 @@
+<template>
+  <NotFoundPage v-if="notFound" />
+
+  <v-container v-else-if="error" class="py-8">
+    <v-alert type="error" variant="tonal" :text="error ?? ''">
+      <template #append>
+        <v-btn variant="text" @click="load">Повторить</v-btn>
+      </template>
+    </v-alert>
+  </v-container>
+
+  <!--
+    Скелетон живёт в той же сетке и в том же контейнере, что и загруженная
+    страница: иначе после загрузки съезжают и отступы секции, и сам постер.
+  -->
+  <div v-else-if="loading" class="hero">
+    <v-container class="hero__content">
+      <div class="details-layout">
+        <v-skeleton-loader class="details-poster-skeleton" type="image" />
+        <v-skeleton-loader
+          class="details-title details-skeleton details-skeleton--title"
+          type="heading, text"
+        />
+        <v-skeleton-loader
+          class="details-meta details-skeleton details-skeleton--meta"
+          type="chip, chip"
+        />
+        <v-skeleton-loader
+          class="details-body details-skeleton details-skeleton--body"
+          type="chip, text, heading, paragraph"
+        />
+      </div>
+    </v-container>
+  </div>
+
+  <template v-else-if="details">
+    <div class="hero">
+      <!--
+        Бэкдроп идёт фоном под приглушённой прозрачностью, а не подложкой под
+        текст: тогда подписи остаются обычным цветом темы и одинаково читаются
+        и в светлой, и в тёмной, без подбора цвета под конкретную картинку.
+      -->
+      <div
+        v-if="backdropUrl"
+        class="hero__backdrop"
+        :style="{ backgroundImage: `url(${backdropUrl})` }"
+        aria-hidden="true"
+      />
+      <div v-if="backdropUrl" class="hero__fade" aria-hidden="true" />
+
+      <v-container class="hero__content">
+        <div class="details-layout">
+          <MediaPoster
+            class="details-poster"
+            :path="details.posterPath"
+            :alt="`Постер: ${details.title}`"
+          />
+
+          <div class="details-title">
+            <h1 class="text-headline-small">{{ details.title }}</h1>
+            <p
+              v-if="details.originalTitle && details.originalTitle !== details.title"
+              class="text-body-medium text-medium-emphasis mt-1"
+            >
+              {{ details.originalTitle }}
+            </p>
+          </div>
+
+          <div class="details-meta">
+            <div class="d-flex flex-wrap align-center ga-3 text-body-medium">
+              <v-chip size="small" variant="tonal">
+                {{ mediaTypeLabel(details.mediaType) }}
+              </v-chip>
+              <span v-if="details.year">{{ details.year }}</span>
+              <span v-if="lengthText">{{ lengthText }}</span>
+              <span v-if="formatRating(details.voteAverage)" class="d-inline-flex align-center ga-1">
+                <v-icon :icon="mdiStar" size="16" color="amber-darken-2" />
+                {{ formatRating(details.voteAverage) }}
+                <span v-if="votesText" class="text-medium-emphasis">({{ votesText }})</span>
+              </span>
+            </div>
+
+            <div v-if="details.genres.length" class="d-flex flex-wrap ga-2 mt-4">
+              <v-chip
+                v-for="genre in details.genres"
+                :key="genre.id"
+                size="small"
+                variant="outlined"
+              >
+                {{ genre.name }}
+              </v-chip>
+            </div>
+          </div>
+
+          <div class="details-body">
+            <div v-if="favoriteItem" class="mb-6">
+              <div class="d-flex flex-wrap align-center ga-2">
+                <FavoriteButton :item="favoriteItem" with-label />
+
+                <!--
+                  Кнопка появляется только у сохранённого тайтла: раскладывать
+                  по категориям то, чего нет в избранном, некуда.
+                -->
+                <v-btn
+                  v-if="isSaved"
+                  :prepend-icon="mdiFolderOutline"
+                  variant="tonal"
+                  @click="categorySheet.open(favoriteItem)"
+                >
+                  Категория
+                </v-btn>
+              </div>
+
+              <div v-if="categoryName" class="d-flex flex-wrap ga-2 mt-3">
+                <v-chip size="small" variant="tonal">{{ categoryName }}</v-chip>
+              </div>
+            </div>
+
+            <p v-if="details.tagline" class="text-body-large font-italic text-medium-emphasis">
+              {{ details.tagline }}
+            </p>
+
+            <h2 class="text-title-medium mt-6 mb-2">Описание</h2>
+            <p class="details-overview text-body-medium">
+              {{ details.overview || 'Описание пока не добавлено.' }}
+            </p>
+          </div>
+        </div>
+      </v-container>
+    </div>
+
+    <v-container v-if="cast.length" class="cast-section">
+      <h2 class="text-title-large mb-4">В ролях</h2>
+      <div
+        ref="castStrip"
+        class="cast-grid"
+        :class="{ 'cast-grid--fade': castHint }"
+        @scroll.passive="updateCastScroll"
+      >
+        <div v-for="person in cast" :key="person.id" class="cast-person text-center">
+          <!--
+            Без дефолтного слота: VAvatar рисует `image` только когда слота нет,
+            причём наличие слота проверяется до v-if внутри него. Поэтому
+            заглушка приходит пропом `icon`, а не разметкой.
+          -->
+          <v-avatar
+            :image="person.photo"
+            :icon="person.photo ? undefined : mdiAccountOutline"
+            size="96"
+            color="surface-light"
+            class="mb-2"
+          />
+          <div class="text-body-small font-weight-medium">{{ person.name }}</div>
+          <div
+            v-if="person.character"
+            class="cast-role text-body-small text-medium-emphasis"
+            :title="person.character"
+          >
+            {{ person.character }}
+          </div>
+        </div>
+      </div>
+    </v-container>
+  </template>
+</template>
+
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onScopeDispose, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -167,172 +333,6 @@ const votesText = computed(() => {
   return `${formatNumber(count)} ${plural(count, ['оценка', 'оценки', 'оценок'])}`
 })
 </script>
-
-<template>
-  <NotFoundPage v-if="notFound" />
-
-  <v-container v-else-if="error" class="py-8">
-    <v-alert type="error" variant="tonal" :text="error ?? ''">
-      <template #append>
-        <v-btn variant="text" @click="load">Повторить</v-btn>
-      </template>
-    </v-alert>
-  </v-container>
-
-  <!--
-    Скелетон живёт в той же сетке и в том же контейнере, что и загруженная
-    страница: иначе после загрузки съезжают и отступы секции, и сам постер.
-  -->
-  <div v-else-if="loading" class="hero">
-    <v-container class="hero__content">
-      <div class="details-layout">
-        <v-skeleton-loader class="details-poster-skeleton" type="image" />
-        <v-skeleton-loader
-          class="details-title details-skeleton details-skeleton--title"
-          type="heading, text"
-        />
-        <v-skeleton-loader
-          class="details-meta details-skeleton details-skeleton--meta"
-          type="chip, chip"
-        />
-        <v-skeleton-loader
-          class="details-body details-skeleton details-skeleton--body"
-          type="chip, text, heading, paragraph"
-        />
-      </div>
-    </v-container>
-  </div>
-
-  <template v-else-if="details">
-    <div class="hero">
-      <!--
-        Бэкдроп идёт фоном под приглушённой прозрачностью, а не подложкой под
-        текст: тогда подписи остаются обычным цветом темы и одинаково читаются
-        и в светлой, и в тёмной, без подбора цвета под конкретную картинку.
-      -->
-      <div
-        v-if="backdropUrl"
-        class="hero__backdrop"
-        :style="{ backgroundImage: `url(${backdropUrl})` }"
-        aria-hidden="true"
-      />
-      <div v-if="backdropUrl" class="hero__fade" aria-hidden="true" />
-
-      <v-container class="hero__content">
-        <div class="details-layout">
-          <MediaPoster
-            class="details-poster"
-            :path="details.posterPath"
-            :alt="`Постер: ${details.title}`"
-          />
-
-          <div class="details-title">
-            <h1 class="text-headline-small">{{ details.title }}</h1>
-            <p
-              v-if="details.originalTitle && details.originalTitle !== details.title"
-              class="text-body-medium text-medium-emphasis mt-1"
-            >
-              {{ details.originalTitle }}
-            </p>
-          </div>
-
-          <div class="details-meta">
-            <div class="d-flex flex-wrap align-center ga-3 text-body-medium">
-              <v-chip size="small" variant="tonal">
-                {{ mediaTypeLabel(details.mediaType) }}
-              </v-chip>
-              <span v-if="details.year">{{ details.year }}</span>
-              <span v-if="lengthText">{{ lengthText }}</span>
-              <span v-if="formatRating(details.voteAverage)" class="d-inline-flex align-center ga-1">
-                <v-icon :icon="mdiStar" size="16" color="amber-darken-2" />
-                {{ formatRating(details.voteAverage) }}
-                <span v-if="votesText" class="text-medium-emphasis">({{ votesText }})</span>
-              </span>
-            </div>
-
-            <div v-if="details.genres.length" class="d-flex flex-wrap ga-2 mt-4">
-              <v-chip
-                v-for="genre in details.genres"
-                :key="genre.id"
-                size="small"
-                variant="outlined"
-              >
-                {{ genre.name }}
-              </v-chip>
-            </div>
-          </div>
-
-          <div class="details-body">
-            <div v-if="favoriteItem" class="mb-6">
-              <div class="d-flex flex-wrap align-center ga-2">
-                <FavoriteButton :item="favoriteItem" with-label />
-
-                <!--
-                  Кнопка появляется только у сохранённого тайтла: раскладывать
-                  по категориям то, чего нет в избранном, некуда.
-                -->
-                <v-btn
-                  v-if="isSaved"
-                  :prepend-icon="mdiFolderOutline"
-                  variant="tonal"
-                  @click="categorySheet.open(favoriteItem)"
-                >
-                  Категория
-                </v-btn>
-              </div>
-
-              <div v-if="categoryName" class="d-flex flex-wrap ga-2 mt-3">
-                <v-chip size="small" variant="tonal">{{ categoryName }}</v-chip>
-              </div>
-            </div>
-
-            <p v-if="details.tagline" class="text-body-large font-italic text-medium-emphasis">
-              {{ details.tagline }}
-            </p>
-
-            <h2 class="text-title-medium mt-6 mb-2">Описание</h2>
-            <p class="details-overview text-body-medium">
-              {{ details.overview || 'Описание пока не добавлено.' }}
-            </p>
-          </div>
-        </div>
-      </v-container>
-    </div>
-
-    <v-container v-if="cast.length" class="cast-section">
-      <h2 class="text-title-large mb-4">В ролях</h2>
-      <div
-        ref="castStrip"
-        class="cast-grid"
-        :class="{ 'cast-grid--fade': castHint }"
-        @scroll.passive="updateCastScroll"
-      >
-        <div v-for="person in cast" :key="person.id" class="cast-person text-center">
-          <!--
-            Без дефолтного слота: VAvatar рисует `image` только когда слота нет,
-            причём наличие слота проверяется до v-if внутри него. Поэтому
-            заглушка приходит пропом `icon`, а не разметкой.
-          -->
-          <v-avatar
-            :image="person.photo"
-            :icon="person.photo ? undefined : mdiAccountOutline"
-            size="96"
-            color="surface-light"
-            class="mb-2"
-          />
-          <div class="text-body-small font-weight-medium">{{ person.name }}</div>
-          <div
-            v-if="person.character"
-            class="cast-role text-body-small text-medium-emphasis"
-            :title="person.character"
-          >
-            {{ person.character }}
-          </div>
-        </div>
-      </div>
-    </v-container>
-  </template>
-</template>
 
 <style scoped>
 /*

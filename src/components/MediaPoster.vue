@@ -1,3 +1,23 @@
+<template>
+  <div class="poster">
+    <!--
+      v-img откладывает загрузку до появления в зоне видимости через
+      IntersectionObserver, поэтому loading="lazy" здесь не нужен.
+    -->
+    <v-img
+      v-if="src && !failed"
+      :src="src"
+      :alt="alt"
+      height="100%"
+      cover
+      @error="failed = true"
+    />
+    <div v-else class="poster__fallback text-medium-emphasis">
+      <v-icon :icon="mdiImageOffOutline" size="32" />
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { mdiImageOffOutline } from '@mdi/js'
@@ -23,26 +43,6 @@ watch(src, () => {
   failed.value = false
 })
 </script>
-
-<template>
-  <div class="poster">
-    <!--
-      v-img откладывает загрузку до появления в зоне видимости через
-      IntersectionObserver, поэтому loading="lazy" здесь не нужен.
-    -->
-    <v-img
-      v-if="src && !failed"
-      :src="src"
-      :alt="alt"
-      height="100%"
-      cover
-      @error="failed = true"
-    />
-    <div v-else class="poster__fallback text-medium-emphasis">
-      <v-icon :icon="mdiImageOffOutline" size="32" />
-    </div>
-  </div>
-</template>
 
 <style scoped>
 .poster {

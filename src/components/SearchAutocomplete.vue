@@ -1,3 +1,68 @@
+<template>
+  <v-text-field
+    v-bind="$attrs"
+    ref="fieldRef"
+    v-model="model"
+    :prepend-inner-icon="mdiMagnify"
+    :aria-expanded="isOpen ? 'true' : 'false'"
+    :aria-controls="listId"
+    :aria-activedescendant="activeIndex >= 0 ? optionId(activeIndex) : undefined"
+    role="combobox"
+    aria-autocomplete="list"
+    autocomplete="off"
+    placeholder="Фильм или сериал"
+    variant="solo-filled"
+    density="compact"
+    rounded="lg"
+    flat
+    single-line
+    hide-details
+    clearable
+    @keydown="onKeydown"
+    @click="onClick"
+  />
+
+  <v-menu
+    v-model="isOpen"
+    :target="fieldRef ?? undefined"
+    :capture-focus="false"
+    :close-on-content-click="false"
+    :offset="4"
+    location="bottom"
+  >
+    <v-sheet class="search-menu" rounded="lg" elevation="6">
+      <div
+        v-if="loading || error || results.length === 0"
+        class="px-4 py-3 text-body-medium"
+        :class="error ? 'text-error' : 'text-medium-emphasis'"
+        aria-live="polite"
+      >
+        {{ loading ? 'Загрузка…' : (error ?? 'Ничего не найдено') }}
+      </div>
+
+      <v-list :id="listId" role="listbox" density="compact" class="pa-0">
+        <v-list-item
+          v-for="(item, index) in results"
+          :id="optionId(index)"
+          :key="`${item.mediaType}:${item.id}`"
+          :active="index === activeIndex"
+          :aria-selected="index === activeIndex"
+          :title="item.title"
+          role="option"
+          @click="openItem(item)"
+        >
+          <template #subtitle>{{ item.year ?? 'год неизвестен' }}</template>
+          <template #append>
+            <v-chip size="x-small" variant="tonal" class="ms-2">
+              {{ mediaTypeLabel(item.mediaType) }}
+            </v-chip>
+          </template>
+        </v-list-item>
+      </v-list>
+    </v-sheet>
+  </v-menu>
+</template>
+
 <script setup lang="ts">
 import { computed, nextTick, ref, useId, watch, type ComponentPublicInstance } from 'vue'
 import { mdiMagnify } from '@mdi/js'
@@ -126,71 +191,6 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 </script>
-
-<template>
-  <v-text-field
-    v-bind="$attrs"
-    ref="fieldRef"
-    v-model="model"
-    :prepend-inner-icon="mdiMagnify"
-    :aria-expanded="isOpen ? 'true' : 'false'"
-    :aria-controls="listId"
-    :aria-activedescendant="activeIndex >= 0 ? optionId(activeIndex) : undefined"
-    role="combobox"
-    aria-autocomplete="list"
-    autocomplete="off"
-    placeholder="Фильм или сериал"
-    variant="solo-filled"
-    density="compact"
-    rounded="lg"
-    flat
-    single-line
-    hide-details
-    clearable
-    @keydown="onKeydown"
-    @click="onClick"
-  />
-
-  <v-menu
-    v-model="isOpen"
-    :target="fieldRef ?? undefined"
-    :capture-focus="false"
-    :close-on-content-click="false"
-    :offset="4"
-    location="bottom"
-  >
-    <v-sheet class="search-menu" rounded="lg" elevation="6">
-      <div
-        v-if="loading || error || results.length === 0"
-        class="px-4 py-3 text-body-medium"
-        :class="error ? 'text-error' : 'text-medium-emphasis'"
-        aria-live="polite"
-      >
-        {{ loading ? 'Загрузка…' : (error ?? 'Ничего не найдено') }}
-      </div>
-
-      <v-list :id="listId" role="listbox" density="compact" class="pa-0">
-        <v-list-item
-          v-for="(item, index) in results"
-          :id="optionId(index)"
-          :key="`${item.mediaType}:${item.id}`"
-          :active="index === activeIndex"
-          :aria-selected="index === activeIndex"
-          :title="item.title"
-          role="option"
-          @click="openItem(item)"
-        >
-          <template #subtitle>{{ item.year ?? 'год неизвестен' }}</template>
-          <template #append>
-            <v-chip size="x-small" variant="tonal" class="ms-2">
-              {{ mediaTypeLabel(item.mediaType) }}
-            </v-chip>
-          </template>
-        </v-list-item>
-      </v-list>
-    </v-sheet>
-  </v-menu>
-</template>
 
 <style scoped>
 .search-menu {

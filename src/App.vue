@@ -1,60 +1,3 @@
-<script setup lang="ts">
-import { mdiHeartOutline, mdiMovieOpenOutline, mdiTrayArrowDown, mdiTrayArrowUp } from '@mdi/js'
-import { reactive, ref } from 'vue'
-import { useDisplay } from 'vuetify'
-
-import FavoriteCategorySheet from '@/components/FavoriteCategorySheet.vue'
-import SearchAutocomplete from '@/components/SearchAutocomplete.vue'
-import { useFavoritesStore } from '@/stores/favorites'
-
-const { smAndDown } = useDisplay()
-
-const favorites = useFavoritesStore()
-
-const importInput = ref<HTMLInputElement | null>(null)
-
-const snackbar = reactive({ open: false, text: '', color: 'success' })
-
-function showSnackbar(text: string, color: 'success' | 'error'): void {
-  snackbar.text = text
-  snackbar.color = color
-  snackbar.open = true
-}
-
-function exportFavorites(): void {
-  const json = favorites.exportToJson()
-  const blob = new Blob([json], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `media-vault-favorites-${new Date().toISOString().slice(0, 10)}.json`
-  link.click()
-
-  URL.revokeObjectURL(url)
-}
-
-function triggerImport(): void {
-  importInput.value?.click()
-}
-
-async function onImportFileChange(event: Event): Promise<void> {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  // Сбрасываем сразу, иначе повторный выбор того же файла не вызовет change.
-  input.value = ''
-  if (!file) return
-
-  try {
-    const text = await file.text()
-    const { added, skipped } = favorites.importFromJson(text)
-    showSnackbar(`Импортировано: ${added}, уже было в избранном: ${skipped}`, 'success')
-  } catch (e) {
-    showSnackbar(e instanceof Error ? e.message : 'Не удалось импортировать файл', 'error')
-  }
-}
-</script>
-
 <template>
   <v-app>
     <v-app-bar :elevation="1" color="surface">
@@ -153,6 +96,63 @@ async function onImportFileChange(event: Event): Promise<void> {
     </v-snackbar>
   </v-app>
 </template>
+
+<script setup lang="ts">
+import { mdiHeartOutline, mdiMovieOpenOutline, mdiTrayArrowDown, mdiTrayArrowUp } from '@mdi/js'
+import { reactive, ref } from 'vue'
+import { useDisplay } from 'vuetify'
+
+import FavoriteCategorySheet from '@/components/FavoriteCategorySheet.vue'
+import SearchAutocomplete from '@/components/SearchAutocomplete.vue'
+import { useFavoritesStore } from '@/stores/favorites'
+
+const { smAndDown } = useDisplay()
+
+const favorites = useFavoritesStore()
+
+const importInput = ref<HTMLInputElement | null>(null)
+
+const snackbar = reactive({ open: false, text: '', color: 'success' })
+
+function showSnackbar(text: string, color: 'success' | 'error'): void {
+  snackbar.text = text
+  snackbar.color = color
+  snackbar.open = true
+}
+
+function exportFavorites(): void {
+  const json = favorites.exportToJson()
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `media-vault-favorites-${new Date().toISOString().slice(0, 10)}.json`
+  link.click()
+
+  URL.revokeObjectURL(url)
+}
+
+function triggerImport(): void {
+  importInput.value?.click()
+}
+
+async function onImportFileChange(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  // Сбрасываем сразу, иначе повторный выбор того же файла не вызовет change.
+  input.value = ''
+  if (!file) return
+
+  try {
+    const text = await file.text()
+    const { added, skipped } = favorites.importFromJson(text)
+    showSnackbar(`Импортировано: ${added}, уже было в избранном: ${skipped}`, 'success')
+  } catch (e) {
+    showSnackbar(e instanceof Error ? e.message : 'Не удалось импортировать файл', 'error')
+  }
+}
+</script>
 
 <style scoped>
 .app-logo {

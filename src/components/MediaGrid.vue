@@ -1,37 +1,3 @@
-<script setup lang="ts">
-import { mdiMagnify } from '@mdi/js'
-
-import type { MediaItem } from '@/api/types'
-import MediaCard from './MediaCard.vue'
-
-withDefaults(
-  defineProps<{
-    items: MediaItem[]
-    loading?: boolean
-    error?: string | null
-    /** Сколько скелетонов рисовать: обычно столько же, сколько придёт карточек. */
-    skeletonCount?: number
-    emptyTitle?: string
-    emptyText?: string
-    /** Путь SVG из @mdi/js: у пустого поиска и пустого избранного смысл разный. */
-    emptyIcon?: string
-    /** Проброс в карточки: кнопка смены категории нужна только в избранном. */
-    withCategory?: boolean
-  }>(),
-  {
-    loading: false,
-    error: null,
-    skeletonCount: 20,
-    emptyTitle: 'Ничего не найдено',
-    emptyText: 'Попробуйте изменить запрос.',
-    emptyIcon: mdiMagnify,
-    withCategory: false,
-  },
-)
-
-const emit = defineEmits<{ retry: [] }>()
-</script>
-
 <template>
   <!-- `?? ''` ради типов: prop ждёт строку, а error объявлен как string | null. -->
   <v-alert v-if="error" type="error" variant="tonal" :text="error ?? ''">
@@ -77,6 +43,40 @@ const emit = defineEmits<{ retry: [] }>()
     />
   </div>
 </template>
+
+<script setup lang="ts">
+import { mdiMagnify } from '@mdi/js'
+
+import type { MediaItem } from '@/api/types'
+import MediaCard from './MediaCard.vue'
+
+withDefaults(
+  defineProps<{
+    items: MediaItem[]
+    loading?: boolean
+    error?: string | null
+    /** Сколько скелетонов рисовать: обычно столько же, сколько придёт карточек. */
+    skeletonCount?: number
+    emptyTitle?: string
+    emptyText?: string
+    /** Путь SVG из @mdi/js: у пустого поиска и пустого избранного смысл разный. */
+    emptyIcon?: string
+    /** Проброс в карточки: кнопка смены категории нужна только в избранном. */
+    withCategory?: boolean
+  }>(),
+  {
+    loading: false,
+    error: null,
+    skeletonCount: 20,
+    emptyTitle: 'Ничего не найдено',
+    emptyText: 'Попробуйте изменить запрос.',
+    emptyIcon: mdiMagnify,
+    withCategory: false,
+  },
+)
+
+const emit = defineEmits<{ retry: [] }>()
+</script>
 
 <style scoped>
 .media-grid {

@@ -1,3 +1,29 @@
+<template>
+  <v-dialog v-model="open" max-width="420">
+    <v-card :title="isRename ? 'Переименовать категорию' : 'Новая категория'">
+      <v-card-text>
+        <v-text-field
+          v-model="name"
+          :error-messages="error"
+          :maxlength="CATEGORY_NAME_MAX_LENGTH"
+          label="Название"
+          density="comfortable"
+          variant="outlined"
+          autofocus
+          hide-details="auto"
+          @keydown.enter.prevent="onSubmit"
+        />
+      </v-card-text>
+
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="text" @click="open = false">Отмена</v-btn>
+        <v-btn :disabled="!canSave" variant="tonal" @click="onSubmit">Сохранить</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</template>
+
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
@@ -60,29 +86,3 @@ function onSubmit(): void {
   open.value = false
 }
 </script>
-
-<template>
-  <v-dialog v-model="open" max-width="420">
-    <v-card :title="isRename ? 'Переименовать категорию' : 'Новая категория'">
-      <v-card-text>
-        <v-text-field
-          v-model="name"
-          :error-messages="error"
-          :maxlength="CATEGORY_NAME_MAX_LENGTH"
-          label="Название"
-          density="comfortable"
-          variant="outlined"
-          autofocus
-          hide-details="auto"
-          @keydown.enter.prevent="onSubmit"
-        />
-      </v-card-text>
-
-      <v-card-actions>
-        <v-spacer />
-        <v-btn variant="text" @click="open = false">Отмена</v-btn>
-        <v-btn :disabled="!canSave" variant="tonal" @click="onSubmit">Сохранить</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
-</template>

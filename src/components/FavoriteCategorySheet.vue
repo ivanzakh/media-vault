@@ -1,64 +1,3 @@
-<script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { mdiCheck, mdiPlus } from '@mdi/js'
-
-import MediaPoster from '@/components/MediaPoster.vue'
-import { useCategorySheet } from '@/composables/useCategorySheet'
-import { CATEGORY_NAME_MAX_LENGTH, useFavoritesStore } from '@/stores/favorites'
-import { UNCATEGORIZED } from '@/types/favorites'
-
-const favorites = useFavoritesStore()
-
-// Разбираем на отдельные привязки, чтобы шаблон работал с `item` и `isOpen`
-// напрямую: вложенные в объект ref'ы Vue в шаблоне не разворачивает.
-const { item, isOpen, close } = useCategorySheet()
-
-const newCategoryName = ref('')
-
-/** Категория текущего тайтла. Пока лист закрыт и тайтла нет — «Без категории». */
-const selectedId = computed(() =>
-  item.value ? favorites.itemCategoryId(item.value.mediaType, item.value.id) : UNCATEGORIZED,
-)
-
-// Поле ввода не должно хранить недописанное имя до следующего открытия: лист
-// один на всё приложение, и остаток от прошлого тайтла выглядел бы как ошибка.
-watch(isOpen, (open) => {
-  if (open) newCategoryName.value = ''
-})
-
-/**
- * Выбор сразу закрывает лист. Категория одна, и после тапа выбирать больше
- * нечего — отдельная кнопка «Готово» была бы лишним подтверждением уже
- * совершённого действия.
- */
-function onSelect(categoryId: string): void {
-  if (!item.value) return
-
-  favorites.setItemCategory(item.value.mediaType, item.value.id, categoryId)
-  close()
-}
-
-/**
- * Создание и назначение — одно действие: категорию заводят именно для того
- * тайтла, который сейчас в листе, и второй тап по только что созданному пункту
- * был бы лишним. Если категория с таким именем уже есть, `createCategory`
- * вернёт её, и мы просто назначим существующую.
- */
-function onCreate(): void {
-  const category = favorites.createCategory(newCategoryName.value)
-  if (!category) return
-
-  onSelect(category.id)
-}
-
-function onRemoveFromFavorites(): void {
-  if (!item.value) return
-
-  favorites.remove(item.value.mediaType, item.value.id)
-  close()
-}
-</script>
-
 <template>
   <!--
     inset — лист не во всю ширину на десктопе: на широком экране полоса от края
@@ -139,6 +78,67 @@ function onRemoveFromFavorites(): void {
     </v-card>
   </v-bottom-sheet>
 </template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { mdiCheck, mdiPlus } from '@mdi/js'
+
+import MediaPoster from '@/components/MediaPoster.vue'
+import { useCategorySheet } from '@/composables/useCategorySheet'
+import { CATEGORY_NAME_MAX_LENGTH, useFavoritesStore } from '@/stores/favorites'
+import { UNCATEGORIZED } from '@/types/favorites'
+
+const favorites = useFavoritesStore()
+
+// Разбираем на отдельные привязки, чтобы шаблон работал с `item` и `isOpen`
+// напрямую: вложенные в объект ref'ы Vue в шаблоне не разворачивает.
+const { item, isOpen, close } = useCategorySheet()
+
+const newCategoryName = ref('')
+
+/** Категория текущего тайтла. Пока лист закрыт и тайтла нет — «Без категории». */
+const selectedId = computed(() =>
+  item.value ? favorites.itemCategoryId(item.value.mediaType, item.value.id) : UNCATEGORIZED,
+)
+
+// Поле ввода не должно хранить недописанное имя до следующего открытия: лист
+// один на всё приложение, и остаток от прошлого тайтла выглядел бы как ошибка.
+watch(isOpen, (open) => {
+  if (open) newCategoryName.value = ''
+})
+
+/**
+ * Выбор сразу закрывает лист. Категория одна, и после тапа выбирать больше
+ * нечего — отдельная кнопка «Готово» была бы лишним подтверждением уже
+ * совершённого действия.
+ */
+function onSelect(categoryId: string): void {
+  if (!item.value) return
+
+  favorites.setItemCategory(item.value.mediaType, item.value.id, categoryId)
+  close()
+}
+
+/**
+ * Создание и назначение — одно действие: категорию заводят именно для того
+ * тайтла, который сейчас в листе, и второй тап по только что созданному пункту
+ * был бы лишним. Если категория с таким именем уже есть, `createCategory`
+ * вернёт её, и мы просто назначим существующую.
+ */
+function onCreate(): void {
+  const category = favorites.createCategory(newCategoryName.value)
+  if (!category) return
+
+  onSelect(category.id)
+}
+
+function onRemoveFromFavorites(): void {
+  if (!item.value) return
+
+  favorites.remove(item.value.mediaType, item.value.id)
+  close()
+}
+</script>
 
 <style scoped>
 .sheet-poster {

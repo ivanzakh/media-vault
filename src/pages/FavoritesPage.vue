@@ -1,61 +1,3 @@
-<script setup lang="ts">
-import { computed, ref } from 'vue'
-import { mdiHeartOutline, mdiPlus } from '@mdi/js'
-
-import CategoryNameDialog from '@/components/CategoryNameDialog.vue'
-import CategoryTile from '@/components/CategoryTile.vue'
-import { useFavoritesStore } from '@/stores/favorites'
-import { UNCATEGORIZED, type Category } from '@/types/favorites'
-import { formatNumber, plural } from '@/utils/format'
-
-const favorites = useFavoritesStore()
-
-const nameDialogOpen = ref(false)
-/** Что правит диалог имени: `null` — создание новой категории. */
-const editing = ref<Category | null>(null)
-
-const pendingDelete = ref<Category | null>(null)
-
-const countText = computed(() => {
-  const total = favorites.count
-  return `${formatNumber(total)} ${plural(total, ['тайтл', 'тайтла', 'тайтлов'])}`
-})
-
-/**
- * «Без категории» показываем только пока в ней что-то лежит: пустая плитка
- * рядом с созданными вручную выглядела бы как настоящая категория, которую
- * почему-то нельзя ни переименовать, ни удалить.
- */
-const uncategorizedCount = computed(() => favorites.categoryCounts.get(UNCATEGORIZED) ?? 0)
-
-const isEmpty = computed(() => !favorites.count && !favorites.categories.length)
-
-function openNameDialog(category: Category | null): void {
-  editing.value = category
-  nameDialogOpen.value = true
-}
-
-/**
- * Называем цену числом: «удалить категорию» звучит безобидно ровно до момента,
- * когда в ней три десятка тайтлов.
- */
-const deleteText = computed(() => {
-  const category = pendingDelete.value
-  if (!category) return ''
-
-  const count = favorites.categoryCounts.get(category.id) ?? 0
-  if (!count) return `Удалить категорию «${category.name}»? В ней ничего нет.`
-
-  const suffix = plural(count, ['тайтл переедет', 'тайтла переедут', 'тайтлов переедут'])
-  return `Удалить категорию «${category.name}»? ${formatNumber(count)} ${suffix} в «Без категории» — из избранного они не пропадут.`
-})
-
-function onConfirmDelete(): void {
-  if (pendingDelete.value) favorites.deleteCategory(pendingDelete.value.id)
-  pendingDelete.value = null
-}
-</script>
-
 <template>
   <v-container class="py-6">
     <div class="d-flex align-center flex-wrap ga-3 mb-4">
@@ -125,6 +67,64 @@ function onConfirmDelete(): void {
     </v-dialog>
   </v-container>
 </template>
+
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { mdiHeartOutline, mdiPlus } from '@mdi/js'
+
+import CategoryNameDialog from '@/components/CategoryNameDialog.vue'
+import CategoryTile from '@/components/CategoryTile.vue'
+import { useFavoritesStore } from '@/stores/favorites'
+import { UNCATEGORIZED, type Category } from '@/types/favorites'
+import { formatNumber, plural } from '@/utils/format'
+
+const favorites = useFavoritesStore()
+
+const nameDialogOpen = ref(false)
+/** Что правит диалог имени: `null` — создание новой категории. */
+const editing = ref<Category | null>(null)
+
+const pendingDelete = ref<Category | null>(null)
+
+const countText = computed(() => {
+  const total = favorites.count
+  return `${formatNumber(total)} ${plural(total, ['тайтл', 'тайтла', 'тайтлов'])}`
+})
+
+/**
+ * «Без категории» показываем только пока в ней что-то лежит: пустая плитка
+ * рядом с созданными вручную выглядела бы как настоящая категория, которую
+ * почему-то нельзя ни переименовать, ни удалить.
+ */
+const uncategorizedCount = computed(() => favorites.categoryCounts.get(UNCATEGORIZED) ?? 0)
+
+const isEmpty = computed(() => !favorites.count && !favorites.categories.length)
+
+function openNameDialog(category: Category | null): void {
+  editing.value = category
+  nameDialogOpen.value = true
+}
+
+/**
+ * Называем цену числом: «удалить категорию» звучит безобидно ровно до момента,
+ * когда в ней три десятка тайтлов.
+ */
+const deleteText = computed(() => {
+  const category = pendingDelete.value
+  if (!category) return ''
+
+  const count = favorites.categoryCounts.get(category.id) ?? 0
+  if (!count) return `Удалить категорию «${category.name}»? В ней ничего нет.`
+
+  const suffix = plural(count, ['тайтл переедет', 'тайтла переедут', 'тайтлов переедут'])
+  return `Удалить категорию «${category.name}»? ${formatNumber(count)} ${suffix} в «Без категории» — из избранного они не пропадут.`
+})
+
+function onConfirmDelete(): void {
+  if (pendingDelete.value) favorites.deleteCategory(pendingDelete.value.id)
+  pendingDelete.value = null
+}
+</script>
 
 <style scoped>
 /* Повторяет .media-grid: минимум колонки 150px, чтобы на 375px влезли две. */

@@ -1,3 +1,49 @@
+<template>
+  <v-container class="py-6">
+    <template v-if="query">
+      <div class="d-flex align-baseline flex-wrap ga-3 mb-4">
+        <h1 class="text-headline-small">{{ query }}</h1>
+        <span
+          v-if="!loading && !error && totalResults > 0"
+          class="text-body-medium text-medium-emphasis"
+        >
+          {{ foundText }}
+        </span>
+      </div>
+
+      <MediaGrid
+        :items="items"
+        :loading="loading"
+        :error="error"
+        :skeleton-count="skeletonCount"
+        empty-title="Ничего не найдено"
+        empty-text="Проверьте раскладку и попробуйте другое название."
+        @retry="run"
+      />
+
+      <!--
+        Число страниц клампится потолком TMDB в 500: при широком запросе
+        total_results уходит в десятки тысяч, но страницы после 500-й вернут ошибку.
+      -->
+      <div v-if="!loading && !error && pageCount > 1" class="mt-8">
+        <v-pagination
+          :model-value="page"
+          :length="pageCount"
+          density="comfortable"
+          rounded="circle"
+          @update:model-value="goToPage"
+        />
+      </div>
+    </template>
+
+    <v-empty-state
+      v-else
+      title="Что ищем?"
+      text="Введите название фильма или сериала в поле в шапке."
+    />
+  </v-container>
+</template>
+
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -54,49 +100,3 @@ const skeletonCount = computed(() => {
   return Math.min(PAGE_SIZE, Math.max(remaining, 1))
 })
 </script>
-
-<template>
-  <v-container class="py-6">
-    <template v-if="query">
-      <div class="d-flex align-baseline flex-wrap ga-3 mb-4">
-        <h1 class="text-headline-small">{{ query }}</h1>
-        <span
-          v-if="!loading && !error && totalResults > 0"
-          class="text-body-medium text-medium-emphasis"
-        >
-          {{ foundText }}
-        </span>
-      </div>
-
-      <MediaGrid
-        :items="items"
-        :loading="loading"
-        :error="error"
-        :skeleton-count="skeletonCount"
-        empty-title="Ничего не найдено"
-        empty-text="Проверьте раскладку и попробуйте другое название."
-        @retry="run"
-      />
-
-      <!--
-        Число страниц клампится потолком TMDB в 500: при широком запросе
-        total_results уходит в десятки тысяч, но страницы после 500-й вернут ошибку.
-      -->
-      <div v-if="!loading && !error && pageCount > 1" class="mt-8">
-        <v-pagination
-          :model-value="page"
-          :length="pageCount"
-          density="comfortable"
-          rounded="circle"
-          @update:model-value="goToPage"
-        />
-      </div>
-    </template>
-
-    <v-empty-state
-      v-else
-      title="Что ищем?"
-      text="Введите название фильма или сериала в поле в шапке."
-    />
-  </v-container>
-</template>

@@ -1,5 +1,3 @@
-<script setup lang="ts"></script>
-
 <template>
   <v-container class="py-16 text-center">
     <div class="text-display-medium font-weight-medium mb-2">404</div>

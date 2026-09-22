@@ -1,3 +1,37 @@
+<template>
+  <!--
+    aria-pressed вместо смены роли: это переключатель одного состояния, и
+    читалка объявит «кнопка, В избранном, нажата», а не две разные кнопки.
+  -->
+  <v-btn
+    v-if="withLabel"
+    :prepend-icon="active ? mdiHeart : mdiHeartOutline"
+    :color="active ? 'red' : undefined"
+    :aria-pressed="active"
+    variant="tonal"
+    @click="onClick"
+  >
+    {{ label }}
+  </v-btn>
+
+  <!--
+    variant="text", а не flat: цвет тогда достаётся иконке, а фон остаётся за
+    нами. С flat активное состояние красило бы саму подложку, и красный квадрат
+    перекрывал бы постер.
+  -->
+  <v-btn
+    v-else
+    :icon="active ? mdiHeart : mdiHeartOutline"
+    :color="active ? 'red' : undefined"
+    :aria-label="label"
+    :aria-pressed="active"
+    variant="text"
+    size="small"
+    class="favorite-chip"
+    @click="onClick"
+  />
+</template>
+
 <script setup lang="ts">
 import { computed } from 'vue'
 import { mdiHeart, mdiHeartOutline } from '@mdi/js'
@@ -49,40 +83,6 @@ function onClick(): void {
   if (favorites.toggle(props.item)) categorySheet.open(props.item)
 }
 </script>
-
-<template>
-  <!--
-    aria-pressed вместо смены роли: это переключатель одного состояния, и
-    читалка объявит «кнопка, В избранном, нажата», а не две разные кнопки.
-  -->
-  <v-btn
-    v-if="withLabel"
-    :prepend-icon="active ? mdiHeart : mdiHeartOutline"
-    :color="active ? 'red' : undefined"
-    :aria-pressed="active"
-    variant="tonal"
-    @click="onClick"
-  >
-    {{ label }}
-  </v-btn>
-
-  <!--
-    variant="text", а не flat: цвет тогда достаётся иконке, а фон остаётся за
-    нами. С flat активное состояние красило бы саму подложку, и красный квадрат
-    перекрывал бы постер.
-  -->
-  <v-btn
-    v-else
-    :icon="active ? mdiHeart : mdiHeartOutline"
-    :color="active ? 'red' : undefined"
-    :aria-label="label"
-    :aria-pressed="active"
-    variant="text"
-    size="small"
-    class="favorite-chip"
-    @click="onClick"
-  />
-</template>
 
 <style scoped>
 .favorite-chip {
