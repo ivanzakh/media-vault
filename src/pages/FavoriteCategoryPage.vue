@@ -1,22 +1,25 @@
 <template>
-  <!-- v-if по имени: пока вотчер выше не увёл на список, рисовать пустую
+  <!-- v-if по имени: пока вотчер в скрипте не увёл на список, рисовать пустую
        страницу несуществующей категории не нужно. -->
   <v-container v-if="name" class="py-6">
-    <div class="d-flex align-center flex-wrap ga-2 mb-4">
-      <!--
-        Ссылка на список, а не router.back(): на страницу заходят и по прямой
-        ссылке, и тогда «назад» увело бы из приложения.
-      -->
-      <v-btn
-        :icon="mdiArrowLeft"
-        :to="{ name: 'favorites' }"
-        variant="text"
-        aria-label="К категориям"
-      />
+    <PageHeader :title="name">
+      <template #prepend>
+        <!--
+          Ссылка на список, а не router.back(): на страницу заходят и по прямой
+          ссылке, и тогда «назад» увело бы из приложения.
+        -->
+        <v-btn
+          :icon="mdiArrowLeft"
+          :to="{ name: 'favorites' }"
+          variant="text"
+          aria-label="К категориям"
+        />
+      </template>
 
-      <h1 class="text-headline-small">{{ name }}</h1>
-      <span class="text-body-medium text-medium-emphasis">{{ countText }}</span>
-    </div>
+      <template #meta>
+        <span class="text-body-medium text-medium-emphasis">{{ countText }}</span>
+      </template>
+    </PageHeader>
 
     <!--
       Фильтры встроены в шапку, а не спрятаны в диалог, как в каталоге: их всего
@@ -26,7 +29,19 @@
       управления над пустым состоянием выглядит как поломка.
     -->
     <div v-if="categoryItems.length" class="d-flex align-center flex-wrap ga-3 mb-4">
-      <!-- Только для смешанной категории: см. `hasBothTypes`. -->
+      <v-select
+        :model-value="filters.sort"
+        :items="SORT_OPTIONS"
+        label="Сортировка"
+        density="compact"
+        variant="outlined"
+        hide-details
+        class="sort-select"
+        @update:model-value="onSortChange"
+      />
+
+      <v-spacer class="d-none d-sm-block" />
+
       <v-btn-toggle
         v-if="hasBothTypes"
         :model-value="filters.type"
@@ -40,19 +55,6 @@
           {{ option.title }}
         </v-btn>
       </v-btn-toggle>
-
-      <v-spacer class="d-none d-sm-block" />
-
-      <v-select
-        :model-value="filters.sort"
-        :items="SORT_OPTIONS"
-        label="Сортировка"
-        density="compact"
-        variant="outlined"
-        hide-details
-        class="sort-select"
-        @update:model-value="onSortChange"
-      />
 
       <v-btn v-if="filtersApplied" variant="text" size="small" @click="resetFilters">
         Сбросить
@@ -86,6 +88,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { mdiArrowLeft, mdiFolderOutline } from '@mdi/js'
 
 import MediaGrid from '@/components/MediaGrid.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import { useFavoritesStore } from '@/stores/favorites'
 import { UNCATEGORIZED } from '@/types/favorites'
 import {

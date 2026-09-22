@@ -1,15 +1,16 @@
 <template>
   <v-container class="py-6">
     <template v-if="query">
-      <div class="d-flex align-baseline flex-wrap ga-3 mb-4">
-        <h1 class="text-headline-small">{{ query }}</h1>
-        <span
-          v-if="!loading && !error && totalResults > 0"
-          class="text-body-medium text-medium-emphasis"
-        >
-          {{ foundText }}
-        </span>
-      </div>
+      <PageHeader :title="query">
+        <template #meta>
+          <span
+            v-if="!loading && !error && totalResults > 0"
+            class="text-body-medium text-medium-emphasis"
+          >
+            {{ foundText }}
+          </span>
+        </template>
+      </PageHeader>
 
       <MediaGrid
         :items="items"
@@ -50,6 +51,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { searchMedia } from '@/api/media'
 import MediaGrid from '@/components/MediaGrid.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import { MAX_PAGES, PAGE_SIZE, usePagedList } from '@/composables/usePagedList'
 import { formatNumber, plural } from '@/utils/format'
 import { firstValue } from '@/utils/query'

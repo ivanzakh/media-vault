@@ -1,11 +1,12 @@
 <template>
   <v-container class="py-6">
-    <div class="d-flex align-center flex-wrap ga-3 mb-4">
-      <h1 class="text-headline-small">Избранное</h1>
-      <span v-if="favorites.count" class="text-body-medium text-medium-emphasis">
-        {{ countText }}
-      </span>
-    </div>
+    <PageHeader title="Избранное">
+      <template #meta>
+        <span v-if="favorites.count" class="text-body-medium text-medium-emphasis">
+          {{ countText }}
+        </span>
+      </template>
+    </PageHeader>
 
     <v-empty-state
       v-if="isEmpty"
@@ -74,6 +75,7 @@ import { mdiHeartOutline, mdiPlus } from '@mdi/js'
 
 import CategoryNameDialog from '@/components/CategoryNameDialog.vue'
 import CategoryTile from '@/components/CategoryTile.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import { useFavoritesStore } from '@/stores/favorites'
 import { UNCATEGORIZED, type Category } from '@/types/favorites'
 import { formatNumber, plural } from '@/utils/format'

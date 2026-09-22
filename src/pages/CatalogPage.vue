@@ -1,36 +1,35 @@
 <template>
   <v-container class="py-6">
-    <div class="d-flex align-center flex-wrap ga-3 mb-4">
-      <h1 class="text-headline-small">{{ heading }}</h1>
+    <PageHeader :title="heading">
+      <template #meta>
+        <!--
+          Место под текст занято уже во время загрузки: иначе на мобилке он
+          появляется после ответа сервера, строка переносится и кнопка «Фильтры»
+          прыгает вниз.
+        -->
+        <v-skeleton-loader
+          v-if="loading"
+          type="text"
+          class="catalog-found-skeleton"
+          aria-hidden="true"
+        />
+        <span v-else-if="!error && totalResults > 0" class="text-body-medium text-medium-emphasis">
+          {{ foundText }}
+        </span>
+      </template>
 
-      <!--
-        Место под текст занято уже во время загрузки: иначе на мобилке он
-        появляется после ответа сервера, строка переносится и кнопка «Фильтры»
-        прыгает вниз.
-      -->
-      <v-skeleton-loader
-        v-if="loading"
-        type="text"
-        class="catalog-found-skeleton"
-        aria-hidden="true"
-      />
-      <span v-else-if="!error && totalResults > 0" class="text-body-medium text-medium-emphasis">
-        {{ foundText }}
-      </span>
-
-      <v-spacer />
-
-      <v-badge
-        v-if="mdAndDown"
-        :model-value="activeFilterCount > 0"
-        :content="activeFilterCount"
-        color="primary"
-      >
-        <v-btn :prepend-icon="mdiTune" variant="tonal" @click="filtersDialog = true">
-          Фильтры
-        </v-btn>
-      </v-badge>
-    </div>
+      <template v-if="mdAndDown" #actions>
+        <v-badge
+          :model-value="activeFilterCount > 0"
+          :content="activeFilterCount"
+          color="primary"
+        >
+          <v-btn :prepend-icon="mdiTune" variant="tonal" @click="filtersDialog = true">
+            Фильтры
+          </v-btn>
+        </v-badge>
+      </template>
+    </PageHeader>
 
     <div class="catalog-layout">
       <!--
@@ -115,6 +114,7 @@ import { useDisplay } from 'vuetify'
 import { discover } from '@/api/media'
 import CatalogFiltersPanel from '@/components/CatalogFilters.vue'
 import MediaGrid from '@/components/MediaGrid.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import { PAGE_SIZE, usePagedList } from '@/composables/usePagedList'
 import {
   DEFAULT_SORT,
