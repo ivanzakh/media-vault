@@ -120,17 +120,48 @@ function showSnackbar(text: string, color: 'success' | 'error'): void {
   snackbar.open = true
 }
 
-function exportFavorites(): void {
-  const json = favorites.exportToJson()
-  const blob = new Blob([json], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
+/** iPadOS представляется десктопным Mac, отличаем его по тач-экрану. */
+function isIos(): boolean {
+  const ua = navigator.userAgent
+  return /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1)
+}
+
+function downloadFile(file: File): void {
+  const url = URL.createObjectURL(file)
 
   const link = document.createElement('a')
   link.href = url
-  link.download = `media-vault-favorites-${new Date().toISOString().slice(0, 10)}.json`
+  link.download = file.name
+  document.body.append(link)
   link.click()
+  link.remove()
 
-  URL.revokeObjectURL(url)
+  // Сразу отзывать нельзя: браузер забирает blob асинхронно, и Safari
+  // к этому моменту получил бы мёртвую ссылку.
+  setTimeout(() => URL.revokeObjectURL(url), 40_000)
+}
+
+async function exportFavorites(): Promise<void> {
+  // Без charset Safari читает кириллицу как Latin-1.
+  const file = new File(
+    [favorites.exportToJson()],
+    `media-vault-favorites-${new Date().toISOString().slice(0, 10)}.json`,
+    { type: 'application/json;charset=utf-8' },
+  )
+
+  // На iOS скачивание по ссылке ненадёжно: Safari открывает файл как текст.
+  // Меню «Поделиться» стабильно даёт «Сохранить в Файлы». Вызывать до любых
+  // await, иначе пропадёт user activation от клика.
+  if (isIos() && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] })
+      return
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return
+    }
+  }
+
+  downloadFile(file)
 }
 
 function triggerImport(): void {
