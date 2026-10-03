@@ -177,8 +177,8 @@ async function onImportFileChange(event: Event): Promise<void> {
 
   try {
     const text = await file.text()
-    const { added, skipped } = favorites.importFromJson(text)
-    showSnackbar(`Импортировано: ${added}, уже было в избранном: ${skipped}`, 'success')
+    favorites.importFromJson(text)
+    showSnackbar('Импорт выполнен', 'success')
   } catch (e) {
     showSnackbar(e instanceof Error ? e.message : 'Не удалось импортировать файл', 'error')
   }

@@ -157,6 +157,62 @@ function migrateFromTags(rawTags: unknown, parsed: ParsedItem[]): LoadedState {
 }
 
 /**
+ * Разбор уже распарсенного JSON — общий для `localStorage` и файла импорта: формат
+ * у них один. Старые версии мигрируются здесь же.
+ *
+ * @returns `null`, если это не наш формат или версия неизвестна.
+ */
+function parsePayload(payload: unknown): LoadedState | null {
+  if (typeof payload !== 'object' || payload === null) return null
+
+  const stored = payload as Partial<StoredPayload> & { tags?: unknown }
+  const { version, items, categories, nextCategoryId } = stored
+  if (!Array.isArray(items)) return null
+
+  const parsed = items.map(parseItem).filter((entry): entry is ParsedItem => entry !== null)
+
+  // v1 — те же записи, но без разметки: реестр пуст, `parseItem` уже проставил
+  // всем `UNCATEGORIZED`. Форма записи не менялась, отдельной ветки не нужно.
+  if (version === 1) return { ...emptyState(), items: parsed.map((entry) => entry.item) }
+
+  if (version === 2) return migrateFromTags(stored.tags, parsed)
+  if (version !== STORAGE_VERSION) return null
+
+  const parsedCategories = Array.isArray(categories)
+    ? categories.map(parseCategory).filter((category): category is Category => category !== null)
+    : []
+
+  // Дубликаты id в реестре сломали бы и выбор категории, и переименование.
+  const known = new Set<string>()
+  const uniqueCategories = parsedCategories.filter((category) => {
+    if (known.has(category.id)) return false
+    known.add(category.id)
+    return true
+  })
+
+  const parsedItems = parsed.map(({ item }) =>
+    // Категория, которой нет в реестре, — след неудачного удаления или ручной
+    // правки хранилища: тайтл возвращается в «Без категории», а не пропадает.
+    known.has(item.categoryId) ? item : { ...item, categoryId: UNCATEGORIZED },
+  )
+
+  // Счётчик подтягиваем вверх, если в хранилище он оказался меньше уже
+  // выданных id: иначе следующая категория затёрла бы существующую.
+  const maxUsed = uniqueCategories.reduce(
+    (max, category) => Math.max(max, categoryIdNumber(category.id)),
+    0,
+  )
+  const storedNext =
+    typeof nextCategoryId === 'number' && Number.isInteger(nextCategoryId) ? nextCategoryId : 1
+
+  return {
+    items: parsedItems,
+    categories: uniqueCategories,
+    nextCategoryId: Math.max(storedNext, maxUsed + 1),
+  }
+}
+
+/**
  * Чтение обёрнуто в try/catch: `localStorage` бросает в приватном режиме, а
  * испорченный вручную JSON не должен превращаться в белый экран — падаем на
  * пустое состояние.
@@ -166,54 +222,7 @@ function loadFromStorage(): LoadedState {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return emptyState()
 
-    const payload: unknown = JSON.parse(raw)
-    if (typeof payload !== 'object' || payload === null) return emptyState()
-
-    const stored = payload as Partial<StoredPayload> & { tags?: unknown }
-    const { version, items, categories, nextCategoryId } = stored
-    if (!Array.isArray(items)) return emptyState()
-
-    const parsed = items.map(parseItem).filter((entry): entry is ParsedItem => entry !== null)
-
-    // v1 — те же записи, но без разметки: реестр пуст, `parseItem` уже проставил
-    // всем `UNCATEGORIZED`. Форма записи не менялась, отдельной ветки не нужно.
-    if (version === 1) return { ...emptyState(), items: parsed.map((entry) => entry.item) }
-
-    if (version === 2) return migrateFromTags(stored.tags, parsed)
-    if (version !== STORAGE_VERSION) return emptyState()
-
-    const parsedCategories = Array.isArray(categories)
-      ? categories.map(parseCategory).filter((category): category is Category => category !== null)
-      : []
-
-    // Дубликаты id в реестре сломали бы и выбор категории, и переименование.
-    const known = new Set<string>()
-    const uniqueCategories = parsedCategories.filter((category) => {
-      if (known.has(category.id)) return false
-      known.add(category.id)
-      return true
-    })
-
-    const parsedItems = parsed.map(({ item }) =>
-      // Категория, которой нет в реестре, — след неудачного удаления или ручной
-      // правки хранилища: тайтл возвращается в «Без категории», а не пропадает.
-      known.has(item.categoryId) ? item : { ...item, categoryId: UNCATEGORIZED },
-    )
-
-    // Счётчик подтягиваем вверх, если в хранилище он оказался меньше уже
-    // выданных id: иначе следующая категория затёрла бы существующую.
-    const maxUsed = uniqueCategories.reduce(
-      (max, category) => Math.max(max, categoryIdNumber(category.id)),
-      0,
-    )
-    const storedNext =
-      typeof nextCategoryId === 'number' && Number.isInteger(nextCategoryId) ? nextCategoryId : 1
-
-    return {
-      items: parsedItems,
-      categories: uniqueCategories,
-      nextCategoryId: Math.max(storedNext, maxUsed + 1),
-    }
+    return parsePayload(JSON.parse(raw)) ?? emptyState()
   } catch (e) {
     console.error('Не удалось прочитать избранное', e)
     return emptyState()
@@ -400,12 +409,11 @@ export const useFavoritesStore = defineStore('favorites', () => {
   }
 
   /**
-   * Слияние, а не замена: уже сохранённые тайтлы не трогаем, импортированные
-   * категории находим по имени или заводим заново через `createCategory` —
-   * поэтому id категорий из файла переносить напрямую нельзя, они могут не
-   * совпадать с локальными.
+   * Замена, а не слияние: файл — тот же формат, что и хранилище, поэтому читаем
+   * его тем же `parsePayload` и подменяем состояние целиком. Всё, чего нет в
+   * файле, теряется.
    */
-  function importFromJson(json: string): { added: number; skipped: number } {
+  function importFromJson(json: string): void {
     let payload: unknown
     try {
       payload = JSON.parse(json)
@@ -413,44 +421,12 @@ export const useFavoritesStore = defineStore('favorites', () => {
       throw new Error('Файл повреждён: это не JSON')
     }
 
-    if (typeof payload !== 'object' || payload === null) {
-      throw new Error('Файл не похож на экспорт избранного Media Vault')
-    }
+    const state = parsePayload(payload)
+    if (!state) throw new Error('Файл не похож на экспорт избранного Media Vault')
 
-    const stored = payload as Partial<StoredPayload>
-    if (!Array.isArray(stored.items)) {
-      throw new Error('Файл не похож на экспорт избранного Media Vault')
-    }
-
-    const parsedItems = stored.items
-      .map(parseItem)
-      .filter((entry): entry is ParsedItem => entry !== null)
-    const parsedCategories = Array.isArray(stored.categories)
-      ? stored.categories.map(parseCategory).filter((category): category is Category => category !== null)
-      : []
-
-    const categoryIdMap = new Map<string, string>()
-    for (const category of parsedCategories) {
-      const target = createCategory(category.name)
-      if (target) categoryIdMap.set(category.id, target.id)
-    }
-
-    let added = 0
-    let skipped = 0
-
-    for (const { item } of parsedItems) {
-      if (keys.value.has(keyOf(item))) {
-        skipped += 1
-        continue
-      }
-
-      add(item)
-      const mapped = categoryIdMap.get(item.categoryId)
-      if (mapped) setItemCategory(item.mediaType, item.id, mapped)
-      added += 1
-    }
-
-    return { added, skipped }
+    items.value = state.items
+    categories.value = state.categories
+    nextCategoryId.value = state.nextCategoryId
   }
 
   // Массивы заменяются целиком, а не мутируются, поэтому deep-вотчер не нужен.
